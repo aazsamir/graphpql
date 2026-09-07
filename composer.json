@@ -13,5 +13,12 @@
             "email": "sutikkukun@gmail.com"
         }
     ],
-    "require": {}
+    "require-dev": {
+        "symfony/var-dumper": "^8.1"
+    },
+    "require": {
+        "aazsamir/plap": "dev-main",
+        "guzzlehttp/guzzle": "^8.1",
+        "nette/php-generator": "^4.2"
+    }
 }
