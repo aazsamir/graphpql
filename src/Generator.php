@@ -71,11 +71,53 @@ class Generator
 
     private function generateQuery(Schema $schema, Field $query, string $namespace, string $outputDir): void
     {
-        dd($query);
+        // dd($schema->findType('Map'), $schema->findType('String'), $schema->findType('ID'));
+        // dd($query);
         $name = \ucfirst($query->name);
         $class = new ClassType($name);
         $class->addImplement(Query::class);
         $class->addConstant('QUERY_NAME', $query->name);
+
+        // handle input variables, if any
+
+        $constructor = $class->addMethod('__construct')
+            ->setPublic();
+
+        $constructorArgs = [];
+
+        foreach ($query->args ?? [] as $arg) {
+            [$nullable, $classname, $docblock] = self::safeClassNameWithNamespace($arg->type, $namespace);
+            $constructorArgs[] = [
+                'name' => $arg->name,
+                'nullable' => $nullable,
+                'type' => $classname,
+                'docblock' => $docblock,
+            ];
+        }
+
+        usort($constructorArgs, fn ($a, $b) => $a['nullable'] <=> $b['nullable']);
+        
+        foreach ($constructorArgs as $constructorArg) {
+            $param = $constructor->addPromotedParameter($constructorArg['name'])
+                ->setType($constructorArg['type'])
+                ->setNullable($constructorArg['nullable']);
+
+            if ($constructorArg['docblock']) {
+                // TODO: docblock var should contain type only
+                $param->addComment(\str_replace('@var', '@param', $constructorArg['docblock']));
+            }
+        }
+
+        // add getVars
+        $method = $class->addMethod('getVars')
+            ->setPublic()
+            ->setReturnType('array');
+        $body = "return [\n";
+        foreach ($constructorArgs as $constructorArg) {
+            $body .= "    '{$constructorArg['name']}' => \$this->{$constructorArg['name']},\n";
+        }
+        $body .= '];';
+        $method->addBody($body);
 
         $returnType = $schema->findType($query->type->primary()->name);
 
@@ -340,12 +382,21 @@ class Generator
         );
         $class->addImplement(GraphObject::class);
 
+        $fields = [];
+
         foreach ($type->fields as $field) {
             if ($name === null) {
                 continue;
             }
 
             [$nullable, $classname, $docblock] = self::safeClassNameWithNamespace($field->type, $namespace);
+
+            $fields[] = [
+                'name' => $field->name,
+                'type' => $classname,
+                'nullable' => $nullable,
+                'docblock' => $docblock,
+            ];
 
             $class->addProperty($field->name)
                 ->setType($classname)
@@ -357,12 +408,46 @@ class Generator
         foreach ($type->inputFields as $field) {
             [$nullable, $classname, $docblock] = self::safeClassNameWithNamespace($field->type, $namespace);
 
+            $fields[] = [
+                'name' => $field->name,
+                'type' => $classname,
+                'nullable' => $nullable,
+                'docblock' => $docblock,
+            ];
+
             $class->addProperty($field->name)
                 ->setNullable($nullable)
                 ->setComment($docblock)
                 ->setType($classname)
                 ->setPublic();
         }
+
+        // add new
+        $method = $class->addMethod('new')
+            ->setStatic()
+            ->setPublic()
+            ->setReturnType('self');
+
+        $body = <<<'PHP'
+            $self = new self();
+
+        PHP;
+
+        foreach ($fields as $field) {
+            $method->addParameter($field['name'])
+                ->setType($field['type'])
+                ->setNullable($field['nullable']);
+
+            if ($field['docblock']) {
+                $method->addComment(str_replace('@var', '@param', $field['docblock']) . ' $' . $field['name']);
+            }
+
+            $body .= "\$self->{$field['name']} = \${$field['name']};\n";
+        }
+
+        $body .= "\nreturn \$self;";
+
+        $method->addBody($body);
 
         return $class;
     }
@@ -412,8 +497,6 @@ class Generator
             case TypeKind::NON_NULL:
                 [$_, $children, $docblock] = self::safeClassNameWithNamespace($type->ofType, $namespace);
                 return [true, $children, $docblock];
-            case TypeKind::SCALAR:
-                return [false, 'mixed', null];
         }
 
         if ($name === null) {
@@ -438,6 +521,10 @@ class Generator
             case 'float':
             case 'bool':
                 return [false, \strtolower($name), null];
+        }
+
+        if ($type->kind === TypeKind::SCALAR) {
+            return [false, 'mixed', null];
         }
 
         $name = ucfirst($name);

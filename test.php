@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 use Aazsamir\Graphpql\Client\ConnArgs;
-use Aazsamir\Graphpql\Client\GraphqlClient;
+use Aazsamir\Graphpql\Client\SchemaClient;
 use Aazsamir\Graphpql\Generator;
 use GuzzleHttp\Client;
 
 require __DIR__ . '/vendor/autoload.php';
 
-$client = new GraphqlClient(
+$client = new SchemaClient(
     new Client(),
 );
 
