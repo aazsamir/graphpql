@@ -1,0 +1,100 @@
+# graphpql
+
+Graphpql is a library for code generation of types, queries and mutations based on graphql schema.
+
+## Usage
+
+First, create a script for code generation.
+
+```php
+<?php
+// graphql-generate.php
+use Aazsamir\Graphpql\Client\ConnArgs;
+use Aazsamir\Graphpql\Client\SchemaClient;
+use Aazsamir\Graphpql\Generator;
+use GuzzleHttp\Client;
+
+require __DIR__ . '/vendor/autoload.php';
+
+$client = new SchemaClient(new Client());
+$schema = $client->fetchSchema(new ConnArgs(
+    endpoint: 'http://localhost:9999/graphql',
+));
+
+$generator = new Generator();
+$generator->generate(
+    $schema,
+    '\\App\\Generated',
+    __DIR__ . '/src/Generated',
+);
+```
+
+Run it
+```
+php graphql-generate.php
+```
+
+And use generated API
+```php
+<?php
+use Aazsamir\Graphpql\Client\ConnArgs;
+use Aazsamir\Graphpql\Client\GraphqlClient;
+use App\Generated\Api;
+use App\Generated\Fields\FindImagesResultTypeField;
+use App\Generated\Fields\ImageField;
+use App\Generated\Fields\ImagePathsTypeField;
+use App\Generated\SelectionSet\FindImagesResultTypeSelectionSet;
+use GuzzleHttp\Client;
+
+$client = new GraphqlClient(
+    new Client(),
+    new ConnArgs('http://localhost:9999/graphql'),
+    new QueryBuilder(),
+);
+
+$api = new Api($client);
+
+$query = $api->findImages()
+    ->select(
+        FindImagesResultTypeSelectionSet::new()->select(
+            FindImagesResultTypeField::images()->subSelect(
+                fn($x) => $x->select(
+                    ImageField::id(),
+                    ImageField::title(),
+                    ImageField::paths()->subSelect(fn ($x) => $x->select(
+                        ImagePathsTypeField::image(),
+                    ))
+                )
+            )
+        )
+    );
+
+dd($query->do());
+```
+
+You can inspect resulting query string using `dd` method.
+
+```php
+$query->dd();
+/* will output:
+query {
+    findImages {
+        images {
+            id
+            title
+            paths {
+                image
+            }
+        }
+    }
+}
+*/
+```
+
+## State of project
+
+Project is still experimental and under construction. Do not use it.
+
+## License
+
+This project is licensed under MIT License.

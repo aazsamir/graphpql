@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aazsamir\Graphpql;
 
 use Aazsamir\Graphpql\Client\GraphqlClient;
+use Aazsamir\Graphpql\Client\QueryBuilder;
 use Aazsamir\Graphpql\Model\GraphEnum;
 use Aazsamir\Graphpql\Model\GraphObject;
 use Aazsamir\Graphpql\Model\ObjectField;
@@ -17,6 +18,7 @@ use Aazsamir\Graphpql\Schema\TypeKind;
 use Nette\PhpGenerator\ClassLike;
 use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\EnumType;
+use Nette\PhpGenerator\Method;
 use Nette\PhpGenerator\PhpFile;
 use Nette\PhpGenerator\PhpNamespace;
 use Nette\PhpGenerator\PsrPrinter;
@@ -49,7 +51,6 @@ class Generator
             mkdir($outputDir, 0777, true);
         }
 
-        // remove all files in the output directory
         self::rrmdir($outputDir);
     }
 
@@ -76,15 +77,35 @@ class Generator
     {
         $class = new ClassType('Api');
 
-        $constructor = $class->addMethod('__construct')
-            ->setPublic();
+        $constructor = $this->addConstructor($class);
 
         $constructor
-            ->addPromotedParameter('client')
+            ->addPromotedParameter('graphqlClient')
             ->setType(GraphqlClient::class);
 
         foreach ($schema->queries as $query) {
+            $classname = $this->getQueryClassname($query);
             $method = $class->addMethod($query->name);
+            $this->addQueryArgsToMethod($method, $query, $namespace, false);
+            $args = $this->getQueryConstructorArgs($query, $namespace);
+
+            if ($args == []) {
+                $body = "\$query = new {$namespace}\Query\{$classname}();";
+            }
+
+            $body = "\$query = new {$namespace}\\Query\\{$classname}(\n";
+
+            foreach ($this->getQueryConstructorArgs($query, $namespace) as $arg) {
+                $body .= "    \${$arg['name']},\n";
+            }
+
+            $body .= ");\n\n";
+            $body .= 'return $query->withClient($this->graphqlClient);';
+            $method->addBody($body);
+
+            $queryTypeName = $namespace . '\\Query\\' . $classname; 
+
+            $method->setReturnType($queryTypeName);
         }
 
         $this->saveFile('Api', $namespace, $outputDir, $class);
@@ -92,19 +113,67 @@ class Generator
 
     private function generateQuery(Schema $schema, Field $query, string $namespace, string $outputDir): void
     {
-        $name = \ucfirst($query->name);
+        $name = $this->getQueryClassname($query);
+        $returnType = $schema->findType($query->type->primary()->name);
+
+        $class = $this->createQuery($query, $schema, $namespace);
+
+        $constructor = $this->addConstructor($class);
+        $constructorArgs = $this->getQueryConstructorArgs($query, $namespace);
+        
+        $this->addQueryArgsToMethod($constructor, $query, $namespace);
+        $this->addGetVarsMethod($class, $constructorArgs);
+        $this->addSelectionMethods($class, $schema, $returnType, $namespace, $outputDir);
+        $this->addGraphqlClient($class);
+        $this->addDoMethod($class, $query, $schema, $namespace);
+        $this->addQueryDdMethod($class);
+
+        $this->saveFile($name, $namespace . '\\Query', $outputDir . '/Query', $class);
+    }
+
+    private function createQuery(Field $query, Schema $schema, string $namespace): ClassType
+    {
+        $name = $this->getQueryClassname($query);
+
         $class = new ClassType($name);
         $class->addImplement(Query::class);
         $class->addConstant('QUERY_NAME', $query->name);
-        $returnType = $schema->findType($query->type->primary()->name);
-        [$_, $returnTypeName, $_] = self::safeClassNameWithNamespace($returnType, $namespace);
+
+        $returnTypeName = $this->getQueryReturnType($query, $schema, $namespace);
         $class->addConstant('QUERY_RETURN_TYPE', $returnTypeName);
 
-        // handle input variables, if any
+        // add getName
+        $class->addMethod('getName')
+            ->setStatic()
+            ->setPublic()
+            ->setReturnType('string')
+            ->addBody('return self::QUERY_NAME;');
 
-        $constructor = $class->addMethod('__construct')
-            ->setPublic();
+        // add getReturnType
+        $class->addMethod('getReturnType')
+            ->setStatic()
+            ->setPublic()
+            ->setReturnType('string')
+            ->addBody('return self::QUERY_RETURN_TYPE;');
 
+        return $class;
+    }
+
+    private function getQueryClassname(Field $query): string
+    {
+        return ucfirst($query->name);
+    }
+
+    private function addConstructor(ClassType $class): Method
+    {
+        return $class->addMethod('__construct')->setPublic();
+    }
+
+    /**
+     * @return array{name: string, nullable: bool, type: string, docblock: ?string}[]
+     */
+    private function getQueryConstructorArgs(Field $query, string $namespace): array
+    {
         $constructorArgs = [];
 
         foreach ($query->args ?? [] as $arg) {
@@ -118,37 +187,67 @@ class Generator
         }
 
         usort($constructorArgs, fn ($a, $b) => $a['nullable'] <=> $b['nullable']);
-        
-        foreach ($constructorArgs as $constructorArg) {
-            $param = $constructor->addPromotedParameter($constructorArg['name'])
-                ->setType($constructorArg['type'])
-                ->setNullable($constructorArg['nullable']);
 
-            if ($constructorArg['nullable']) {
+        return $constructorArgs;
+    }
+
+    private function addQueryArgsToMethod(Method $method, Field $query, string $namespace, bool $promoted = true): void
+    {
+        $args = $this->getQueryConstructorArgs($query, $namespace);
+
+        foreach ($args as $arg) {
+            if ($promoted) {
+                $param = $method->addPromotedParameter($arg['name']);
+            } else {
+                $param = $method->addParameter($arg['name']);    
+            }
+
+            $param = $param
+                ->setType($arg['type'])
+                ->setNullable($arg['nullable']);
+
+            if ($arg['nullable']) {
                 $param->setDefaultValue(null);
             }
 
-            if ($constructorArg['docblock']) {
-                $constructor->addComment('@param ' . $constructorArg['docblock'] . ' $' . $constructorArg['name']);
+            if ($arg['docblock']) {
+                $method->addComment('@param ' . $arg['docblock'] . ' $' . $arg['name']);
             }
         }
+    }
 
-        // add getVars
+    private function addGetVarsMethod(ClassType $class, array $args): void
+    {
         $method = $class->addMethod('getVars')
             ->setPublic()
             ->setReturnType('array');
+
         $body = "return [\n";
-        foreach ($constructorArgs as $constructorArg) {
-            $body .= "    '{$constructorArg['name']}' => \$this->{$constructorArg['name']},\n";
+
+        foreach ($args as $arg) {
+            $body .= "    '{$arg['name']}' => \$this->{$arg['name']},\n";
         }
+
         $body .= '];';
         $method->addBody($body);
+    }
 
-        $selectionType = $this->generateSelectionSet($schema, $returnType, $namespace, $outputDir);
+    private function addSelectionMethods(
+        ClassType $class,
+        Schema $schema,
+        Type $returnType,
+        string $namespace,
+        string $outputDir,
+    ): void {
+        $selectionType = $this->generateSelectionSet(
+            $schema,
+            $returnType,
+            $namespace,
+            $outputDir,
+        );
 
         $class->addProperty('selection')->setType($selectionType)->setPrivate();
 
-        // add select
         $method = $class->addMethod('select')
             ->setPublic()
             ->setReturnType('self');
@@ -169,37 +268,35 @@ class Generator
             ->setPublic()
             ->setReturnType($selectionType)
             ->addBody('return $this->selection;');
+    }
 
-        // add getName
-        $class->addMethod('getName')
-            ->setStatic()
-            ->setPublic()
-            ->setReturnType('string')
-            ->addBody('return self::QUERY_NAME;');
-
-        // add getReturnType
-        $class->addMethod('getReturnType')
-            ->setStatic()
-            ->setPublic()
-            ->setReturnType('string')
-            ->addBody('return self::QUERY_RETURN_TYPE;');
-
-        $class->addProperty('client')
+    private function addGraphqlClient(ClassType $class): void
+    {
+        $class->addProperty('graphqlClient')
             ->setPrivate()
             ->setType(GraphqlClient::class);
 
         $method = $class->addMethod('withClient')
             ->setPublic()
             ->setReturnType('self');
-        $method->addParameter('client')
+        $method->addParameter('graphqlClient')
             ->setType(GraphqlClient::class);
         $body = <<<'PHP'
         $clone = clone $this;
-        $clone->client = $client;
+        $clone->graphqlClient = $graphqlClient;
 
         return $clone;
         PHP;
         $method->setBody($body);
+    }
+
+    private function addDoMethod(
+        ClassType $class,
+        Field $query,
+        Schema $schema,
+        string $namespace,
+    ): void {
+        $returnTypeName = $this->getQueryReturnType($query, $schema, $namespace);
 
         // add do
         $method = $class->addMethod('do')
@@ -208,7 +305,7 @@ class Generator
             ->setReturnNullable();
 
         $body = <<<'PHP'
-        $response = $this->client->query($this);
+        $response = $this->graphqlClient->query($this);
 
         if ($response->data === null) {
             return null;
@@ -219,16 +316,46 @@ class Generator
         return $returnType::fromArray($response->data);
         PHP;
         $method->setBody($body);
+    }
 
-        $this->saveFile($name, $namespace . '\\Query', $outputDir . '/Query', $class);
+    private function addQueryDdMethod(ClassType $class): void
+    {
+        $method = $class->addMethod('dd')
+            ->setPublic()
+            ->setReturnType('never');
+
+        $body = <<<'PHP'
+        $content = new \%s()->fromQuery($this);
+
+        if (function_exists('dd')) {
+            dd($content);
+        }
+
+        echo "<pre><br>\n";
+        echo($content);
+        echo "</pre><br>\n";
+        exit(1);
+        PHP;
+
+        $body = sprintf($body, QueryBuilder::class);
+        
+        $method->addBody($body);
+    }
+
+    private function getQueryReturnType(Field $query, Schema $schema, string $namespace): string
+    {
+        $returnType = $schema->findType($query->type->primary()->name);
+        [$_, $returnTypeName, $_] = self::safeClassNameWithNamespace($returnType, $namespace);
+
+        return $returnTypeName;
     }
 
     private function generateSelectionSet(Schema $schema, Type $type, string $namespace, string $outputDir): string
     {
-        [$nullable, $classname, $docblock] = self::safeClassName($type, $namespace);
+        [$_, $classname, $_] = self::safeClassName($type, $namespace);
 
         if ($classname === 'mixed') {
-            return 'mixed';
+            throw new \Exception('Unreachable');
         }
 
         $classname .= 'SelectionSet';
@@ -284,10 +411,10 @@ class Generator
 
     private function generateFieldSet(Schema $schema, Type $type, string $namespace, string $outputDir)
     {
-        [$nullable, $classname, $docblock] = self::safeClassName($type, $namespace);
+        [$_, $classname, $_] = self::safeClassName($type, $namespace);
 
         if ($classname === 'mixed') {
-            return 'mixed';
+            throw new \Exception('Unreachable');
         }
 
         $classname .= 'Field';
@@ -314,8 +441,7 @@ class Generator
                 $childSelection = $this->generateSelectionSet($schema, $schema->findType($field->type->primary()->name), $namespace, $outputDir);
 
                 if ($childSelection === 'mixed') {
-                    throw new \Exception('shouldnt happen');
-                    goto primitivepath;
+                    throw new \Exception('Unreachable');
                 }
 
                 $returnType = 'self';
@@ -329,7 +455,6 @@ class Generator
 
                 $docblock = "@return self<$childSelection>";
             } else {
-                primitivepath:
                 $returnType = 'self';
                 $body = <<<PHP
                 \$instance = new self();
