@@ -4,4 +4,7 @@ declare(strict_types=1);
 
 namespace Aazsamir\Graphpql\Model;
 
-interface GraphObject {}
+interface GraphObject
+{
+    public function toArray(): array;
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aazsamir\Graphpql;
 
+use Aazsamir\Graphpql\Client\GraphqlClient;
 use Aazsamir\Graphpql\Model\GraphEnum;
 use Aazsamir\Graphpql\Model\GraphObject;
 use Aazsamir\Graphpql\Model\ObjectField;
@@ -13,7 +14,6 @@ use Aazsamir\Graphpql\Schema\Field;
 use Aazsamir\Graphpql\Schema\Schema;
 use Aazsamir\Graphpql\Schema\Type;
 use Aazsamir\Graphpql\Schema\TypeKind;
-use DateTimeInterface;
 use Nette\PhpGenerator\ClassLike;
 use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\EnumType;
@@ -39,6 +39,8 @@ class Generator
         foreach ($schema->queries as $query) {
             $this->generateQuery($schema, $query, $namespace, $outputDir);
         }
+
+        $this->generateApi($schema, $namespace, $outputDir);
     }
 
     private function clearGenerated(string $outputDir): void
@@ -68,6 +70,24 @@ class Generator
 
             rmdir($dir);
         }
+    }
+
+    private function generateApi(Schema $schema, string $namespace, string $outputDir): void
+    {
+        $class = new ClassType('Api');
+
+        $constructor = $class->addMethod('__construct')
+            ->setPublic();
+
+        $constructor
+            ->addPromotedParameter('client')
+            ->setType(GraphqlClient::class);
+
+        foreach ($schema->queries as $query) {
+            $method = $class->addMethod($query->name);
+        }
+
+        $this->saveFile('Api', $namespace, $outputDir, $class);
     }
 
     private function generateQuery(Schema $schema, Field $query, string $namespace, string $outputDir): void
@@ -163,6 +183,42 @@ class Generator
             ->setPublic()
             ->setReturnType('string')
             ->addBody('return self::QUERY_RETURN_TYPE;');
+
+        $class->addProperty('client')
+            ->setPrivate()
+            ->setType(GraphqlClient::class);
+
+        $method = $class->addMethod('withClient')
+            ->setPublic()
+            ->setReturnType('self');
+        $method->addParameter('client')
+            ->setType(GraphqlClient::class);
+        $body = <<<'PHP'
+        $clone = clone $this;
+        $clone->client = $client;
+
+        return $clone;
+        PHP;
+        $method->setBody($body);
+
+        // add do
+        $method = $class->addMethod('do')
+            ->setPublic()
+            ->setReturnType($returnTypeName)
+            ->setReturnNullable();
+
+        $body = <<<'PHP'
+        $response = $this->client->query($this);
+
+        if ($response->data === null) {
+            return null;
+        }
+
+        $returnType = self::QUERY_RETURN_TYPE;
+
+        return $returnType::fromArray($response->data);
+        PHP;
+        $method->setBody($body);
 
         $this->saveFile($name, $namespace . '\\Query', $outputDir . '/Query', $class);
     }
@@ -392,6 +448,7 @@ class Generator
             $name,
         );
         $class->addImplement(GraphObject::class);
+        $class->addTrait('Aazsamir\Graphpql\Model\ToArray');
 
         $fields = [];
 

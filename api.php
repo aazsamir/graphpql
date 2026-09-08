@@ -26,7 +26,7 @@ use GuzzleHttp\Client;
 
 require __DIR__ . '/vendor/autoload.php';
 
-$q = new FindSavedFilter('xd');
+$q = new FindSavedFilter('6');
 $q->select(SavedFilterSelectionSet::new()->select(
     SavedFilterField::id(),
     SavedFilterField::find_filter()->subSelect(fn($x) => $x->select(
@@ -65,8 +65,11 @@ $client = new GraphqlClient(
     $queryBuilder,
 );
 
-$response = $client->query($q);
-$returnType = $q->getReturnType();
+$response = $q->withClient($client)->do();
+dd($response->toArray());
 
-$serialized = $returnType::fromArray($response->data);
-dd($serialized, $response);
+// $response = $client->query($q);
+// $returnType = $q->getReturnType();
+
+// $serialized = $returnType::fromArray($response->data);
+// dd($serialized, $response);
