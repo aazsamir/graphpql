@@ -43,7 +43,6 @@ use App\Generated\Api;
 use App\Generated\Fields\FindImagesResultTypeField;
 use App\Generated\Fields\ImageField;
 use App\Generated\Fields\ImagePathsTypeField;
-use App\Generated\SelectionSet\FindImagesResultTypeSelectionSet;
 use GuzzleHttp\Client;
 
 $client = new GraphqlClient(
@@ -54,14 +53,14 @@ $client = new GraphqlClient(
 
 $api = new Api($client);
 
-$query = $api->findImages()
-    ->select(
-        FindImagesResultTypeSelectionSet::new()->select(
-            FindImagesResultTypeField::images()->subSelect(
+$query = $api->findImages(ids: ['1', '2'])
+    ->selector(
+        fn ($x) => $x->select(
+            FindImagesResultTypeField::images()->selector(
                 fn($x) => $x->select(
                     ImageField::id(),
                     ImageField::title(),
-                    ImageField::paths()->subSelect(fn ($x) => $x->select(
+                    ImageField::paths()->selector(fn ($x) => $x->select(
                         ImagePathsTypeField::image(),
                     ))
                 )
@@ -78,7 +77,9 @@ You can inspect resulting query string using `dd` method.
 $query->dd();
 /* will output:
 query {
-    findImages {
+    findImages(
+        ids: ["1","2"]
+    ) {
         images {
             id
             title

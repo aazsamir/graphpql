@@ -248,7 +248,26 @@ class Generator
 
         $class->addProperty('selection')->setType($selectionType)->setPrivate();
 
-        $method = $class->addMethod('select')
+        // add selector()
+        $method = $class->addMethod('selector');
+        $method
+            ->setPublic()
+            ->setReturnType('self');
+        $method->addParameter('selection')->setType('callable');
+        $method->addComment("@param callable($selectionType): void \$selection");
+        $body = <<<PHP
+        if (!isset(\$this->child)) {
+            \$this->selection = {$selectionType}::new();
+        }
+
+        \$selection(\$this->selection);
+
+        return \$this;
+        PHP;
+        $method->addBody($body);
+
+        // add setSelectionSet
+        $method = $class->addMethod('setSelection')
             ->setPublic()
             ->setReturnType('self');
 
@@ -297,6 +316,7 @@ class Generator
         string $namespace,
     ): void {
         $returnTypeName = $this->getQueryReturnType($query, $schema, $namespace);
+        $isArray = $query->type->isArray();
 
         // add do
         $method = $class->addMethod('do')
@@ -313,8 +333,19 @@ class Generator
 
         $returnType = self::QUERY_RETURN_TYPE;
 
-        return $returnType::fromArray($response->data);
         PHP;
+
+        if ($isArray) {
+            $body .= <<<'PHP'
+
+            return array_map(fn ($x) => $returnType::fromArray($x), $response->data);
+            PHP;
+            $method->setReturnType('array');
+            $method->addComment("@return array<$returnTypeName>");
+        } else {
+            $body .= 'return $returnType::fromArray($response->data);';
+        }
+
         $method->setBody($body);
     }
 
@@ -474,8 +505,8 @@ class Generator
             }
         }
 
-        // add subSelect()
-        $method = $class->addMethod('subSelect');
+        // add selector()
+        $method = $class->addMethod('selector');
         $method
             ->setPublic()
             ->setReturnType('self');

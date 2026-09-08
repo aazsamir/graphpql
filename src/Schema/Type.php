@@ -42,4 +42,12 @@ readonly class Type
     {
         return $this->ofType?->primary() ?? $this;
     }
+
+    public function isArray(): bool
+    {
+        return $this->kind === TypeKind::LIST
+            || (
+                $this->kind === TypeKind::NON_NULL && $this->ofType->kind === TypeKind::LIST
+            );
+    }
 }
