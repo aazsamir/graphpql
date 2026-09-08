@@ -16,13 +16,16 @@ class GraphqlClient
         private QueryBuilder $queryBuilder,
     ) {}
 
-    public function query(Query $query)
+    public function query(Query $query): Response
     {
         $queryString = $this->queryBuilder->fromQuery($query);
-
         $response = $this->doQuery($queryString);
+        $data = \array_first($response['data']);
 
-        dd($response);
+        return new Response(
+            $data,
+            $response['errors'] ?? [],
+        );
     }
 
     private function doQuery(string $query, array $variables = []): array

@@ -31,16 +31,26 @@ class QueryBuilder
 
     private function parseVars(array $vars, int $indent = 0): string
     {
-        $string = "(\n";
+        $string = null;
 
         foreach ($vars as $name => $value) {
+            if ($value === null) {
+                continue;
+            }
+
+            if ($string === null) {
+                $string = "(\n";
+            }
+
             $strValue = $this->parseVarValue($value, $indent);
             $string .= $this->pad("$name: $strValue", $indent) . "\n";
         }
 
-        $string .= $this->pad(")", $indent - 1);
+        if ($string !== null) {
+            $string .= $this->pad(")", $indent - 1);
+        }
 
-        return $string;
+        return (string) $string;
     }
 
     private function parseVarValue(mixed $value, int $indent): string
@@ -50,7 +60,9 @@ class QueryBuilder
             is_numeric($value) => $value,
             $value instanceof \DateTimeInterface => '"' . $value->format('Y-m-d H:i:s') . '"',
             $value instanceof \UnitEnum => $value->name,
+            $value instanceof \BackedEnum => $value->value,
             is_object($value) => $this->parseVarObject($value, $indent + 1),
+            is_array($value) => $this->parseVarArray($value, $indent + 1),
             default => throw new \Exception('Dont know how to handle ' . \get_debug_type($value)),
         };
     }
@@ -68,6 +80,20 @@ class QueryBuilder
         $string .= $this->pad("}", $indent - 1);
 
         return $string;        
+    }
+
+    private function parseVarArray(array $array, int $indent): string
+    {
+        $string = "[";
+        foreach ($array as $value) {
+            $string .= $this->parseVarValue($value, $indent);
+            $string .= ',';
+        }
+
+        $string = rtrim($string, ',');
+        $string .= ']';
+
+        return $string;
     }
 
     private function parseSelectionSet(SelectionSet $set, int $indent = 0): string

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Aazsamir\Graphpql\Client\ConnArgs;
 use Aazsamir\Graphpql\Client\GraphqlClient;
 use Aazsamir\Graphpql\Client\QueryBuilder;
+use Aazsamir\Graphpql\Client\Serializer;
 use Aazsamir\Graphpql\Generated\Fields\FindImagesResultTypeField;
 use Aazsamir\Graphpql\Generated\Fields\ImageField;
 use Aazsamir\Graphpql\Generated\Fields\ImagePathsTypeField;
@@ -39,16 +40,16 @@ $q->select(JobSelectionSet::new()->select(
     JobField::id(),
 ));
 
-$q = new FindImages()
+$q = new FindImages(ids: ["1", "2"])
     ->select(
         FindImagesResultTypeSelectionSet::new()->select(
             FindImagesResultTypeField::images()->subSelect(
                 fn($x) => $x->select(
                     ImageField::id(),
                     ImageField::title(),
-                    // ImageField::paths()->subSelect(fn ($x) => $x->select(
-                    //     ImagePathsTypeField::image()
-                    // ))
+                    ImageField::paths()->subSelect(fn ($x) => $x->select(
+                        ImagePathsTypeField::image(),
+                    ))
                 )
             )
         )
@@ -65,4 +66,7 @@ $client = new GraphqlClient(
 );
 
 $response = $client->query($q);
-dd($response);
+$returnType = $q->getReturnType();
+
+$serialized = $returnType::fromArray($response->data);
+dd($serialized, $response);

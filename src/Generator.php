@@ -13,6 +13,7 @@ use Aazsamir\Graphpql\Schema\Field;
 use Aazsamir\Graphpql\Schema\Schema;
 use Aazsamir\Graphpql\Schema\Type;
 use Aazsamir\Graphpql\Schema\TypeKind;
+use DateTimeInterface;
 use Nette\PhpGenerator\ClassLike;
 use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\EnumType;
@@ -71,12 +72,13 @@ class Generator
 
     private function generateQuery(Schema $schema, Field $query, string $namespace, string $outputDir): void
     {
-        // dd($schema->findType('Map'), $schema->findType('String'), $schema->findType('ID'));
-        // dd($query);
         $name = \ucfirst($query->name);
         $class = new ClassType($name);
         $class->addImplement(Query::class);
         $class->addConstant('QUERY_NAME', $query->name);
+        $returnType = $schema->findType($query->type->primary()->name);
+        [$_, $returnTypeName, $_] = self::safeClassNameWithNamespace($returnType, $namespace);
+        $class->addConstant('QUERY_RETURN_TYPE', $returnTypeName);
 
         // handle input variables, if any
 
@@ -102,9 +104,12 @@ class Generator
                 ->setType($constructorArg['type'])
                 ->setNullable($constructorArg['nullable']);
 
+            if ($constructorArg['nullable']) {
+                $param->setDefaultValue(null);
+            }
+
             if ($constructorArg['docblock']) {
-                // TODO: docblock var should contain type only
-                $param->addComment(\str_replace('@var', '@param', $constructorArg['docblock']));
+                $constructor->addComment('@param ' . $constructorArg['docblock'] . ' $' . $constructorArg['name']);
             }
         }
 
@@ -118,8 +123,6 @@ class Generator
         }
         $body .= '];';
         $method->addBody($body);
-
-        $returnType = $schema->findType($query->type->primary()->name);
 
         $selectionType = $this->generateSelectionSet($schema, $returnType, $namespace, $outputDir);
 
@@ -153,6 +156,13 @@ class Generator
             ->setPublic()
             ->setReturnType('string')
             ->addBody('return self::QUERY_NAME;');
+
+        // add getReturnType
+        $class->addMethod('getReturnType')
+            ->setStatic()
+            ->setPublic()
+            ->setReturnType('string')
+            ->addBody('return self::QUERY_RETURN_TYPE;');
 
         $this->saveFile($name, $namespace . '\\Query', $outputDir . '/Query', $class);
     }
@@ -366,9 +376,10 @@ class Generator
         [$_, $name] = self::safeClassName($type, $namespace);
         $enum = new EnumType($name);
         $enum->addImplement(GraphEnum::class);
+        $enum->setType('string');
 
         foreach ($type->enumValues as $enumValue) {
-            $enum->addCase($enumValue->name);
+            $enum->addCase($enumValue->name, $enumValue->name);
         }
 
         return $enum;
@@ -396,12 +407,13 @@ class Generator
                 'type' => $classname,
                 'nullable' => $nullable,
                 'docblock' => $docblock,
+                'fieldType' => $field->type,
             ];
 
             $class->addProperty($field->name)
                 ->setType($classname)
                 ->setNullable($nullable)
-                ->setComment($docblock)
+                ->setComment($docblock ? ('@var ' . $docblock) : null)
                 ->setPublic();
         }
 
@@ -413,11 +425,12 @@ class Generator
                 'type' => $classname,
                 'nullable' => $nullable,
                 'docblock' => $docblock,
+                'fieldType' => $field->type,
             ];
 
             $class->addProperty($field->name)
                 ->setNullable($nullable)
-                ->setComment($docblock)
+                ->setComment($docblock ? ('@var ' . $docblock) : null)
                 ->setType($classname)
                 ->setPublic();
         }
@@ -434,12 +447,16 @@ class Generator
         PHP;
 
         foreach ($fields as $field) {
-            $method->addParameter($field['name'])
+            $parameter = $method->addParameter($field['name'])
                 ->setType($field['type'])
                 ->setNullable($field['nullable']);
 
+            if ($field['nullable']) {
+                $parameter->setDefaultValue(null);
+            }
+
             if ($field['docblock']) {
-                $method->addComment(str_replace('@var', '@param', $field['docblock']) . ' $' . $field['name']);
+                $method->addComment('@param ' . $field['docblock'] . ' $' . $field['name']);
             }
 
             $body .= "\$self->{$field['name']} = \${$field['name']};\n";
@@ -449,7 +466,64 @@ class Generator
 
         $method->addBody($body);
 
+        // add fromArray
+        $method = $class->addMethod('fromArray')
+            ->setStatic()
+            ->setPublic()
+            ->setReturnType('self');
+
+        $method->addParameter('data')
+            ->setType('array');
+        
+        $body = <<<'PHP'
+        $self = new self();
+
+        PHP;
+        foreach ($fields as $field) {
+            $body .= 'if (isset($data[\'' . $field['name'] .'\'])) {' . "\n";
+            $body .= '    $self->' . $field['name'] . ' = ';
+            $body .= $this->addFromArraySerVar(
+                $field['name'],
+                $field['type'],
+                $field['docblock'],
+                $field['fieldType'],
+                "\$data['{$field['name']}']",
+            );
+            $body .= ";\n";
+
+            $body .= "}\n";
+        }
+
+        $body .= "\n";
+        $body .= 'return $self;';
+        $method->addBody($body);
+
         return $class;
+    }
+
+    private function addFromArraySerVar(string $fieldName, string $fieldType, ?string $fieldDocblock, Type $type, string $source): string
+    {
+        if ($fieldType === 'array') {
+            $fieldDocblock = \preg_replace('/array</', '', $fieldDocblock, 1);
+            $fieldDocblock = substr($fieldDocblock, 0, -1);
+
+            return "array_map(fn (\$data) => " . $this->addFromArraySerVar(
+                $fieldName,
+                $fieldDocblock,
+                null,
+                $type,
+                '$data',
+            ) . ", {$source} ?? [])";
+        } elseif (\strtolower($fieldType) === $fieldType) {
+            // a bit dumb, but, it means it is a primitive
+            return "$source";
+        } elseif ($fieldType === '\DateTimeInterface') {
+            return "new \DateTimeImmutable($source)";
+        } elseif ($type->primary()->kind === TypeKind::ENUM) {
+            return $fieldType . "::from($source)";
+        } else {
+            return $fieldType . "::fromArray($source)";
+        }        
     }
 
     private static function shouldSkipType(Type $type): bool
@@ -490,18 +564,24 @@ class Generator
 
         switch ($type->kind) {
             case TypeKind::LIST:
-                $ofType = self::safeClassNameWithNamespace($type->ofType, $namespace)[1];
-                $docblock = '@var array<' . $ofType . '>';
+                [$nullable, $classname, $docblock] = self::safeClassNameWithNamespace($type->ofType, $namespace);
 
-                return [false, 'array', $docblock];
+                if ($docblock) {
+                    $docblock = 'array<' . $docblock . '>';
+                } else {
+                    $docblock = 'array<' . $classname . '>';
+                }
+
+                // TODO: we assume that every array may be nullable
+                return [true, 'array', $docblock];
             case TypeKind::NON_NULL:
                 [$_, $children, $docblock] = self::safeClassNameWithNamespace($type->ofType, $namespace);
-                return [true, $children, $docblock];
+                return [false, $children, $docblock];
         }
 
         if ($name === null) {
             dd($type, 'something wrong');
-            return [false, null];
+            return [true, null];
         }
 
         $name = self::safeName($name);
@@ -509,27 +589,27 @@ class Generator
         switch (\strtolower($name)) {
             case 'timestamp':
             case 'time':
-                return [false, '\\' . \DateTimeInterface::class, null];
+                return [true, '\\' . \DateTimeInterface::class, null];
             case 'int64':
-                return [false, 'int', null];
+                return [true, 'int', null];
             case 'id':
-                return [false, 'string', null];
+                return [true, 'string', null];
             case 'boolean':
-                return [false, 'bool', null];
+                return [true, 'bool', null];
             case 'string':
             case 'int':
             case 'float':
             case 'bool':
-                return [false, \strtolower($name), null];
+                return [true, \strtolower($name), null];
         }
 
         if ($type->kind === TypeKind::SCALAR) {
-            return [false, 'mixed', null];
+            return [true, 'mixed', null];
         }
 
         $name = ucfirst($name);
 
-        return [false, $name, null];
+        return [true, $name, null];
     }
 
     private static function safeClassNameWithNamespace(Type $type, string $namespace): array
