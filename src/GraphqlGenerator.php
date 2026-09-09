@@ -24,7 +24,7 @@ use Nette\PhpGenerator\PhpFile;
 use Nette\PhpGenerator\PhpNamespace;
 use Nette\PhpGenerator\PsrPrinter;
 
-class Generator
+class GraphqlGenerator
 {
     private array $skip = [];
 
@@ -849,6 +849,14 @@ class Generator
         return in_array(
             \strtolower($type->name),
             [
+                '__directive',
+                '__directivelocation',
+                '__enumvalue',
+                '__field',
+                '__inputvalue',
+                '__schema',
+                '__type',
+                '__typekind',
                 'query',
                 'mutation',
                 'subscription',

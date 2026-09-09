@@ -11,7 +11,7 @@ First, create a script for code generation.
 // graphql-generate.php
 use Aazsamir\Graphpql\Client\ConnArgs;
 use Aazsamir\Graphpql\Client\SchemaClient;
-use Aazsamir\Graphpql\Generator;
+use Aazsamir\Graphpql\GraphqlGenerator;
 use GuzzleHttp\Client;
 
 require __DIR__ . '/vendor/autoload.php';
@@ -21,7 +21,7 @@ $schema = $client->fetchSchema(new ConnArgs(
     endpoint: 'http://localhost:9999/graphql',
 ));
 
-$generator = new Generator();
+$generator = new GraphqlGenerator();
 $generator->generate(
     $schema,
     '\\App\\Generated',
