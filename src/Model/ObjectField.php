@@ -9,4 +9,6 @@ interface ObjectField
     public function getName(): string;
 
     public function getChild(): ?\Aazsamir\Graphpql\Model\SelectionSet;
+
+    public function getUnion(): ?string;
 }

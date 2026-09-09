@@ -10,6 +10,7 @@ readonly class Type
      * @param Field[]|null $fields
      * @param InputField[]|null $inputFields
      * @param EnumValue[]|null $enumValues
+     * @param Type[]|null $possibleTypes
      */
     public function __construct(
         public ?string $name,

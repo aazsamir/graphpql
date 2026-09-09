@@ -110,11 +110,24 @@ class QueryBuilder
         return $string;
     }
 
-    private function parseSelectionSet(SelectionSet $set, int $indent = 0): string
+    private function parseSelectionSet(SelectionSet $set, int $indent = 0, ?string $preset = null): string
     {
         $string = " {\n";
 
+        if ($preset) {
+            $string .= $preset;
+            $string .= "\n";
+        }
+
         foreach ($set->getSelection() as $field) {
+            if ($field->getUnion()) {
+                $string .= $this->pad("... on {$field->getUnion()} ", $indent);
+                $string .= $this->parseSelectionSet($field->getChild(), $indent + 1, $this->pad('__typename', $indent + 1));
+                $string .= "\n";
+
+                continue;
+            }
+
             $string .= $this->pad($field->getName(), $indent);
 
             if ($field->getChild()) {

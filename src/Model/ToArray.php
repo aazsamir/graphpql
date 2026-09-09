@@ -43,4 +43,16 @@ trait ToArray
             return $value;
         }
     }
+
+    private static function conditionalIf(
+        bool $condition,
+        callable $if,
+        callable $else
+    ) {
+        if ($condition) {
+            return $if();
+        }
+
+        return $else();
+    }
 }

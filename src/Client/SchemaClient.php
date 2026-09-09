@@ -158,21 +158,10 @@ class SchemaClient
         $mutations = [];
 
         foreach ($response['data']['__schema']['types'] as $type) {
-            [$fields, $inputFields, $enumValues] = $this->parseProperties($type);
-
             try {
-                $typeInstance = new Type(
-                    name: $type['name'],
-                    kind: TypeKind::from($type['kind']),
-                    description: $type['description'],
-                    fields: $fields,
-                    inputFields: $inputFields,
-                    interfaces: $type['interfaces'],
-                    enumValues: $enumValues,
-                    possibleTypes: $type['possibleTypes']
-                );
+                $typeInstance = $this->parseType($type);
             } catch (\Throwable $e) {
-                dd($type);
+                dd($type, $e->getMessage());
             }
             $types[] = $typeInstance;
         }
@@ -188,6 +177,23 @@ class SchemaClient
         }
 
         return new Schema($types, $queries, $mutations);
+    }
+
+    private function parseType(array $type): Type
+    {
+        [$fields, $inputFields, $enumValues] = $this->parseProperties($type);
+
+        return new Type(
+            name: $type['name'],
+            kind: TypeKind::from($type['kind']),
+            description: $type['description'] ?? null,
+            fields: $fields,
+            inputFields: $inputFields,
+            interfaces: $type['interfaces'] ?? null,
+            enumValues: $enumValues,
+            // possibleTypes: $type['possibleTypes']
+            possibleTypes: array_map($this->parseType(...), $type['possibleTypes'] ?? []),
+        );
     }
 
     private function parseProperties(array $data): array
@@ -237,7 +243,7 @@ class SchemaClient
     {
         $args = [];
 
-        foreach ($data['args'] as $arg) {
+        foreach ($data['args'] ?? [] as $arg) {
             $args[] = new InputField(
                 name: $arg['name'],
                 description: $arg['description'],
@@ -251,8 +257,8 @@ class SchemaClient
             description: $data['description'],
             args: $args,
             type: Type::fromArray($data['type']),
-            isDeprecated: $data['isDeprecated'],
-            deprecationReason: $data['deprecationReason']
+            isDeprecated: $data['isDeprecated'] ?? null,
+            deprecationReason: $data['deprecationReason'] ?? null,
         );
     }
 

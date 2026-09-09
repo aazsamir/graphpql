@@ -27,27 +27,29 @@ use Nette\PhpGenerator\PsrPrinter;
 class GraphqlGenerator
 {
     private array $skip = [];
+    private Schema $schema;
 
     public function generate(
         Schema $schema,
         string $namespace,
         string $outputDir
     ): void {
+        $this->schema = $schema;
         $this->clearGenerated($outputDir);
 
         foreach ($schema->types as $type) {
-            $this->generateType($schema, $type, $namespace, $outputDir);
+            $this->generateType($type, $namespace, $outputDir);
         }
 
         foreach ($schema->queries as $query) {
-            $this->generateQuery($schema, $query, $namespace, $outputDir);
+            $this->generateQuery($query, $namespace, $outputDir);
         }
 
         foreach ($schema->mutations as $mutation) {
-            $this->generateMutation($schema, $mutation, $namespace, $outputDir);
+            $this->generateMutation($mutation, $namespace, $outputDir);
         }
 
-        $this->generateApi($schema, $namespace, $outputDir);
+        $this->generateApi($namespace, $outputDir);
     }
 
     private function clearGenerated(string $outputDir): void
@@ -56,10 +58,10 @@ class GraphqlGenerator
             mkdir($outputDir, 0777, true);
         }
 
-        self::rrmdir($outputDir);
+        $this->rrmdir($outputDir);
     }
 
-    private static function rrmdir(string $dir): void
+    private function rrmdir(string $dir): void
     {
         if (is_dir($dir)) {
             $objects = scandir($dir);
@@ -67,7 +69,7 @@ class GraphqlGenerator
             foreach ($objects as $object) {
                 if ($object != "." && $object != "..") {
                     if (is_dir($dir . DIRECTORY_SEPARATOR . $object) && !is_link($dir . "/" . $object)) {
-                        self::rrmdir($dir . DIRECTORY_SEPARATOR . $object);
+                        $this->rrmdir($dir . DIRECTORY_SEPARATOR . $object);
                     } else {
                         unlink($dir . DIRECTORY_SEPARATOR . $object);
                     }
@@ -78,7 +80,7 @@ class GraphqlGenerator
         }
     }
 
-    private function generateApi(Schema $schema, string $namespace, string $outputDir): void
+    private function generateApi(string $namespace, string $outputDir): void
     {
         $class = new ClassType('Api');
 
@@ -88,7 +90,7 @@ class GraphqlGenerator
             ->addPromotedParameter('graphqlClient')
             ->setType(GraphqlClient::class);
 
-        foreach ($schema->queries as $query) {
+        foreach ($this->schema->queries as $query) {
             $classname = $this->getOperationClassname($query);
             $method = $class->addMethod($query->name);
             $this->addOperationArgsToMethod($method, $query, $namespace, false);
@@ -108,12 +110,12 @@ class GraphqlGenerator
             $body .= 'return $query->withClient($this->graphqlClient);';
             $method->addBody($body);
 
-            $queryTypeName = $namespace . '\\Query\\' . $classname; 
+            $queryTypeName = $namespace . '\\Query\\' . $classname;
 
             $method->setReturnType($queryTypeName);
         }
 
-        foreach ($schema->mutations as $mutation) {
+        foreach ($this->schema->mutations as $mutation) {
             $classname = $this->getOperationClassname($mutation);
             $method = $class->addMethod($mutation->name);
             $this->addOperationArgsToMethod($method, $mutation, $namespace, false);
@@ -133,7 +135,7 @@ class GraphqlGenerator
             $body .= 'return $mutation->withClient($this->graphqlClient);';
             $method->addBody($body);
 
-            $mutationTypeName = $namespace . '\\Mutation\\' . $classname; 
+            $mutationTypeName = $namespace . '\\Mutation\\' . $classname;
 
             $method->setReturnType($mutationTypeName);
         }
@@ -141,27 +143,27 @@ class GraphqlGenerator
         $this->saveFile('Api', $namespace, $outputDir, $class);
     }
 
-    private function generateMutation(Schema $schema, Field $mutation, string $namespace, string $outputDir): void
+    private function generateMutation(Field $mutation, string $namespace, string $outputDir): void
     {
         $name = $this->getOperationClassname($mutation);
-        $returnType = $schema->findType($mutation->type->primary()->name);
+        $returnType = $this->schema->findType($mutation->type->primary()->name);
 
-        $class = $this->createMutation($mutation, $schema, $namespace);
+        $class = $this->createMutation($mutation, $namespace);
 
         $constructor = $this->addConstructor($class);
         $constructorArgs = $this->getOperationConstructorArgs($mutation, $namespace);
 
         $this->addOperationArgsToMethod($constructor, $mutation, $namespace);
         $this->addGetVarsMethod($class, $constructorArgs);
-        $this->addSelectionMethods($class, $schema, $returnType, $namespace, $outputDir);
+        $this->addSelectionMethods($class, $returnType, $namespace, $outputDir);
         $this->addGraphqlClient($class);
-        $this->addDoMethod($class, $mutation, $schema, $namespace);
+        $this->addDoMethod($class, $mutation, $namespace);
         $this->addOperationDdMethod($class);
 
         $this->saveFile($name, $namespace . '\\Mutation', $outputDir . '/Mutation', $class);
     }
 
-    private function createMutation(Field $mutation, Schema $schema, string $namespace): ClassType
+    private function createMutation(Field $mutation, string $namespace): ClassType
     {
         $name = $this->getOperationClassname($mutation);
 
@@ -169,7 +171,7 @@ class GraphqlGenerator
         $class->addImplement(Mutation::class);
         $class->addConstant('MUTATION_NAME', $mutation->name);
 
-        $returnTypeName = $this->getQueryReturnType($mutation, $schema, $namespace);
+        $returnTypeName = $this->getQueryReturnType($mutation, $namespace);
         $class->addConstant('MUTATION_RETURN_TYPE', $returnTypeName);
 
         // add getName
@@ -189,27 +191,27 @@ class GraphqlGenerator
         return $class;
     }
 
-    private function generateQuery(Schema $schema, Field $query, string $namespace, string $outputDir): void
+    private function generateQuery(Field $query, string $namespace, string $outputDir): void
     {
         $name = $this->getOperationClassname($query);
-        $returnType = $schema->findType($query->type->primary()->name);
+        $returnType = $this->schema->findType($query->type->primary()->name);
 
-        $class = $this->createQuery($query, $schema, $namespace);
+        $class = $this->createQuery($query, $namespace);
 
         $constructor = $this->addConstructor($class);
         $constructorArgs = $this->getOperationConstructorArgs($query, $namespace);
-        
+
         $this->addOperationArgsToMethod($constructor, $query, $namespace);
         $this->addGetVarsMethod($class, $constructorArgs);
-        $this->addSelectionMethods($class, $schema, $returnType, $namespace, $outputDir);
+        $this->addSelectionMethods($class, $returnType, $namespace, $outputDir);
         $this->addGraphqlClient($class);
-        $this->addDoMethod($class, $query, $schema, $namespace);
+        $this->addDoMethod($class, $query, $namespace);
         $this->addOperationDdMethod($class);
 
         $this->saveFile($name, $namespace . '\\Query', $outputDir . '/Query', $class);
     }
 
-    private function createQuery(Field $query, Schema $schema, string $namespace): ClassType
+    private function createQuery(Field $query, string $namespace): ClassType
     {
         $name = $this->getOperationClassname($query);
 
@@ -217,7 +219,7 @@ class GraphqlGenerator
         $class->addImplement(Query::class);
         $class->addConstant('QUERY_NAME', $query->name);
 
-        $returnTypeName = $this->getQueryReturnType($query, $schema, $namespace);
+        $returnTypeName = $this->getQueryReturnType($query, $namespace);
         $class->addConstant('QUERY_RETURN_TYPE', $returnTypeName);
 
         // add getName
@@ -255,7 +257,7 @@ class GraphqlGenerator
         $constructorArgs = [];
 
         foreach ($query->args ?? [] as $arg) {
-            [$nullable, $classname, $docblock] = self::safeClassNameWithNamespace($arg->type, $namespace);
+            [$nullable, $classname, $docblock] = $this->safeClassNameWithNamespace($arg->type, $namespace);
             $constructorArgs[] = [
                 'name' => $arg->name,
                 'nullable' => $nullable,
@@ -264,7 +266,7 @@ class GraphqlGenerator
             ];
         }
 
-        usort($constructorArgs, fn ($a, $b) => $a['nullable'] <=> $b['nullable']);
+        usort($constructorArgs, fn($a, $b) => $a['nullable'] <=> $b['nullable']);
 
         return $constructorArgs;
     }
@@ -277,7 +279,7 @@ class GraphqlGenerator
             if ($promoted) {
                 $param = $method->addPromotedParameter($arg['name']);
             } else {
-                $param = $method->addParameter($arg['name']);    
+                $param = $method->addParameter($arg['name']);
             }
 
             $param = $param
@@ -312,13 +314,11 @@ class GraphqlGenerator
 
     private function addSelectionMethods(
         ClassType $class,
-        Schema $schema,
         Type $returnType,
         string $namespace,
         string $outputDir,
     ): void {
         $selectionType = $this->generateSelectionSet(
-            $schema,
             $returnType,
             $namespace,
             $outputDir,
@@ -390,10 +390,9 @@ class GraphqlGenerator
     private function addDoMethod(
         ClassType $class,
         Field $query,
-        Schema $schema,
         string $namespace,
     ): void {
-        $returnTypeName = $this->getQueryReturnType($query, $schema, $namespace);
+        $returnTypeName = $this->getQueryReturnType($query, $namespace);
         $isArray = $query->type->isArray();
 
         // add do
@@ -447,21 +446,21 @@ class GraphqlGenerator
         PHP;
 
         $body = sprintf($body, QueryBuilder::class);
-        
+
         $method->addBody($body);
     }
 
-    private function getQueryReturnType(Field $query, Schema $schema, string $namespace): string
+    private function getQueryReturnType(Field $query, string $namespace): string
     {
-        $returnType = $schema->findType($query->type->primary()->name);
-        [$_, $returnTypeName, $_] = self::safeClassNameWithNamespace($returnType, $namespace);
+        $returnType = $this->schema->findType($query->type->primary()->name);
+        [$_, $returnTypeName, $_] = $this->safeClassNameWithNamespace($returnType, $namespace);
 
         return $returnTypeName;
     }
 
-    private function generateSelectionSet(Schema $schema, Type $type, string $namespace, string $outputDir): string
+    private function generateSelectionSet(Type $type, string $namespace, string $outputDir): string
     {
-        [$_, $classname, $_] = self::safeClassName($type, $namespace);
+        [$_, $classname, $_] = $this->safeClassName($type->primary(), $namespace, true);
 
         if ($classname === 'mixed') {
             return 'mixed';
@@ -485,7 +484,7 @@ class GraphqlGenerator
             ->setPublic()
             ->setReturnType('self');
 
-        $selectionType = $this->generateFieldSet($schema, $type, $namespace, $outputDir);
+        $selectionType = $this->generateFieldSet($type, $namespace, $outputDir);
 
         $method
             ->setVariadic()
@@ -518,9 +517,9 @@ class GraphqlGenerator
         return $fullname;
     }
 
-    private function generateFieldSet(Schema $schema, Type $type, string $namespace, string $outputDir)
+    private function generateFieldSet(Type $type, string $namespace, string $outputDir)
     {
-        [$_, $classname, $_] = self::safeClassName($type, $namespace);
+        [$_, $classname, $_] = $this->safeClassName($type, $namespace, true);
 
         if ($classname === 'mixed') {
             throw new \Exception('Unreachable');
@@ -542,18 +541,18 @@ class GraphqlGenerator
 
         $class->addProperty('name')->setType('string')->setPrivate();
         $class->addProperty('child')->setType(SelectionSet::class)->setPrivate();
+        $class->addProperty('union')->setType('?string')->setPrivate()->setValue(null);
 
         foreach ($type->fields ?? [] as $field) {
             $docblock = '@return self<mixed>';
 
-            if ($field->type->primary()->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT)) {
-                $childSelection = $this->generateSelectionSet($schema, $schema->findType($field->type->primary()->name), $namespace, $outputDir);
+            if ($field->type->primary()->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION)) {
+                $childSelection = $this->generateSelectionSet($this->schema->findType($field->type->primary()->name), $namespace, $outputDir);
 
                 if ($childSelection === 'mixed') {
                     throw new \Exception('Unreachable');
                 }
 
-                $returnType = 'self';
                 $body = <<<PHP
                 \$instance = new self();
                 \$instance->name = '$field->name';
@@ -564,7 +563,6 @@ class GraphqlGenerator
 
                 $docblock = "@return self<$childSelection>";
             } else {
-                $returnType = 'self';
                 $body = <<<PHP
                 \$instance = new self();
                 \$instance->name = '$field->name';
@@ -575,11 +573,31 @@ class GraphqlGenerator
 
             $method = $class->addMethod($field->name)
                 ->setStatic()
-                ->setReturnType($returnType);
+                ->setReturnType('self');
             $method->addBody($body);
 
             if ($docblock) {
                 $method->addComment($docblock);
+            }
+        }
+
+        if ($type->primary()->kind->isAny(TypeKind::UNION)) {
+            foreach ($this->schema->findType($type->primary()->name)->possibleTypes ?? [] as $possibleType) {
+                [$_, $possibleTypeClassname, $_] = $this->safeClassNameWithNamespace($possibleType, $namespace . '\\SelectionSet');
+                $possibleTypeClassname .= 'SelectionSet';
+                $method = $class->addMethod('on' . $possibleType->name)
+                    ->setReturnType('self')
+                    ->setStatic();
+
+                $body = <<<PHP
+                \$instance = new self();
+                \$instance->child = new {$possibleTypeClassname}();
+                \$instance->union = '{$possibleType->name}';
+
+                return \$instance;
+                PHP;
+                $method->setBody($body);
+                $method->addComment("@return self<$possibleTypeClassname>");
             }
         }
 
@@ -610,11 +628,20 @@ class GraphqlGenerator
 
         return null;
         PHP;
+
+        // dd($this->schema->findType('Image'));
+
         // add getChild
         $method = $class->addMethod('getChild')
             ->setPublic()
             ->setReturnType('?' . SelectionSet::class)
             ->addBody($body);
+
+        // add getUnion
+        $class->addMethod('getUnion')
+            ->setPublic()
+            ->setReturnType('?string')
+            ->setBody('return $this->union;');
 
         $this->saveFile(
             $classname,
@@ -644,18 +671,18 @@ class GraphqlGenerator
         \file_put_contents($filename, $printer->printFile($file));
     }
 
-    private function generateType(Schema $schema, Type $type, string $namespace, string $outputDir): void
+    private function generateType(Type $type, string $namespace, string $outputDir): void
     {
-        if (self::shouldSkipType($type)) {
+        if ($this->shouldSkipType($type)) {
             return;
         }
 
-        [$_, $name] = self::safeClassName($type, $namespace);
+        [$_, $name] = $this->safeClassName($type, $namespace);
 
         if ($type->kind === TypeKind::ENUM) {
             $item = $this->generateEnum($type, $namespace);
         } else {
-            $item = $this->generateClass($schema, $type, $namespace, $outputDir);
+            $item = $this->generateClass($type, $namespace, $outputDir);
         }
 
         $this->saveFile($name, $namespace, $outputDir, $item);
@@ -663,7 +690,7 @@ class GraphqlGenerator
 
     private function generateEnum(Type $type, string $namespace): EnumType
     {
-        [$_, $name] = self::safeClassName($type, $namespace);
+        [$_, $name] = $this->safeClassName($type, $namespace);
         $enum = new EnumType($name);
         $enum->addImplement(GraphEnum::class);
         $enum->setType('string');
@@ -675,9 +702,9 @@ class GraphqlGenerator
         return $enum;
     }
 
-    private function generateClass(Schema $schema, Type $type, string $namespace, string $outputDir): ClassType
+    private function generateClass(Type $type, string $namespace, string $outputDir): ClassType
     {
-        [$_, $name] = self::safeClassName($type, $namespace);
+        [$_, $name] = $this->safeClassName($type, $namespace);
         $class = new ClassType(
             $name,
         );
@@ -686,12 +713,12 @@ class GraphqlGenerator
 
         $fields = [];
 
-        foreach ($type->fields as $field) {
+        foreach ($type->fields ?? [] as $field) {
             if ($name === null) {
                 continue;
             }
 
-            [$nullable, $classname, $docblock] = self::safeClassNameWithNamespace($field->type, $namespace);
+            [$nullable, $classname, $docblock] = $this->safeClassNameWithNamespace($field->type, $namespace);
 
             $fields[] = [
                 'name' => $field->name,
@@ -709,8 +736,8 @@ class GraphqlGenerator
                 ->setPublic();
         }
 
-        foreach ($type->inputFields as $field) {
-            [$nullable, $classname, $docblock] = self::safeClassNameWithNamespace($field->type, $namespace);
+        foreach ($type->inputFields ?? [] as $field) {
+            [$nullable, $classname, $docblock] = $this->safeClassNameWithNamespace($field->type, $namespace);
 
             $fields[] = [
                 'name' => $field->name,
@@ -734,14 +761,16 @@ class GraphqlGenerator
                 continue;
             }
 
-            [$_, $selfClassname, $_] = self::safeClassNameWithNamespace($type, $namespace . '\\Fields');
+            [$_, $selfClassname, $_] = $this->safeClassNameWithNamespace($type, $namespace . '\\Fields');
 
             $primaryType = $field['fieldType']->primary();
 
-            if ($primaryType->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT)) {
+            if ($primaryType->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION)) {
                 $childSelection = $this->generateSelectionSet(
-                $schema,
-                $schema->findType($field['fieldType']->primary()->name), $namespace, $outputDir);
+                    $this->schema->findType($field['fieldType']->primary()->name),
+                    $namespace,
+                    $outputDir
+                );
             } else {
                 $childSelection = 'mixed';
             }
@@ -770,7 +799,7 @@ class GraphqlGenerator
 
         PHP;
 
-        usort($fields, fn ($a, $b) => $a['nullable'] <=> $b['nullable']);
+        usort($fields, fn($a, $b) => $a['nullable'] <=> $b['nullable']);
 
         foreach ($fields as $field) {
             $parameter = $method->addParameter($field['name'])
@@ -800,20 +829,22 @@ class GraphqlGenerator
 
         $method->addParameter('data')
             ->setType('array');
-        
+
         $body = <<<'PHP'
         $self = new self();
 
         PHP;
         foreach ($fields as $field) {
-            $body .= 'if (isset($data[\'' . $field['name'] .'\'])) {' . "\n";
+            $body .= 'if (isset($data[\'' . $field['name'] . '\'])) {' . "\n";
             $body .= '    $self->' . $field['name'] . ' = ';
             $body .= $this->addFromArraySerVar(
+                $namespace,
                 $field['name'],
                 $field['type'],
                 $field['docblock'],
                 $field['fieldType'],
                 "\$data['{$field['name']}']",
+                1
             );
             $body .= ";\n";
 
@@ -827,19 +858,85 @@ class GraphqlGenerator
         return $class;
     }
 
-    private function addFromArraySerVar(string $fieldName, string $fieldType, ?string $fieldDocblock, Type $type, string $source): string
+    private function addFromArraySerVar(string $namespace, string $fieldName, string $fieldType, ?string $fieldDocblock, Type $type, string $source, int $indent = 0): string
     {
+        if ($type->kind->isAny(TypeKind::NON_NULL)) {
+            if ($type->ofType->kind->isAny(TypeKind::LIST)) {
+                $classname = 'array';
+            } else {
+                [$_, $classname, $_] = $this->safeClassNameWithNamespace($type->ofType, $namespace);
+            }
+
+            return $this->addFromArraySerVar(
+                $namespace,
+                $fieldName,
+                $classname,
+                $fieldDocblock,
+                $type->ofType,
+                $source,
+                $indent,
+            );
+        }
+
+        if ($type->kind->isAny(TypeKind::UNION)) {
+            $body = <<<PHP
+            array_map(function (\$data) {
+                %s
+            }, {$source} ?? []);
+            PHP;
+            $conditionals = '%s';
+            $primary = $this->schema->findType($type->name);
+            
+            $loopIndent = 0;
+
+            foreach ($primary->possibleTypes ?? [] as $possibleType) {
+                $possibleType = $this->schema->findType($possibleType->name);
+                [$_, $possibleTypeClassname, $_] = $this->safeClassNameWithNamespace($possibleType, $namespace);
+                $conditionals = sprintf(
+                    $conditionals,
+                    $this->multipad(
+                        "self::conditionalIf(\n\$data['__typename'] === '{$possibleType->name}',\nfn () => {$possibleTypeClassname}::fromArray(\$data),\nfn () => %s\n)",
+                        $loopIndent,
+                    ),
+                );
+                $loopIndent += 1;
+            }
+
+            $conditionals = sprintf($conditionals, 'null');
+
+            $body = $this->multipad($conditionals, 1);
+            $body = sprintf($body, $conditionals);
+            $body = $this->multipad($body, 1);
+
+            return $body;
+        }
+
         if ($fieldType === 'array') {
-            $fieldDocblock = \preg_replace('/array</', '', $fieldDocblock, 1);
+            $fieldDocblock = \preg_replace('/array</', '', $fieldDocblock ?? '', 1);
             $fieldDocblock = substr($fieldDocblock, 0, -1);
 
-            return "array_map(fn (\$data) => " . $this->addFromArraySerVar(
+            $body = <<<PHP
+            array_map(function (\$data) {
+                if (\$data === []) {
+                    return null;
+                }
+
+                return %s;
+            }, {$source} ?? []);
+            PHP;
+
+            $body = $this->multipad($body, $indent);
+            $body = sprintf($body, $this->addFromArraySerVar(
+                $namespace,
                 $fieldName,
                 $fieldDocblock,
                 null,
-                $type,
+                $type->ofType,
                 '$data',
-            ) . ", {$source} ?? [])";
+                $indent + 1
+            ));
+
+            return $body;
         } elseif (\strtolower($fieldType) === $fieldType) {
             // a bit dumb, but, it means it is a primitive
             return "$source";
@@ -849,17 +946,26 @@ class GraphqlGenerator
             return $fieldType . "::from($source)";
         } else {
             return $fieldType . "::fromArray($source)";
-        }        
+        }
     }
 
-    private static function shouldSkipType(Type $type): bool
+    private function shouldSkipType(Type $type): bool
     {
         if ($type->kind === TypeKind::SCALAR) {
             return true;
         }
 
+        if ($type->kind === TypeKind::UNION) {
+            return true;
+        }
+
+        return $this->isPrimitive($type->name);
+    }
+
+    private function isPrimitive(string $name): bool
+    {
         return in_array(
-            \strtolower($type->name),
+            \strtolower($name),
             [
                 '__directive',
                 '__directivelocation',
@@ -892,25 +998,36 @@ class GraphqlGenerator
         return $name;
     }
 
-    public static function safeClassName(Type $type, string $namespace): array
+    public function safeClassName(Type $type, string $namespace, bool $skipContainers = false): array
     {
         $name = $type->name;
 
-        switch ($type->kind) {
-            case TypeKind::LIST:
-                [$nullable, $classname, $docblock] = self::safeClassNameWithNamespace($type->ofType, $namespace);
+        if ($skipContainers === false) {
+            switch ($type->kind) {
+                case TypeKind::LIST:
+                    [$nullable, $classname, $docblock] = $this->safeClassNameWithNamespace($type->ofType, $namespace);
 
-                if ($docblock) {
-                    $docblock = 'array<' . $docblock . '>';
-                } else {
-                    $docblock = 'array<' . $classname . '>';
-                }
+                    if ($docblock) {
+                        $docblock = 'array<' . $docblock . '>';
+                    } else {
+                        $docblock = 'array<' . $classname . '>';
+                    }
 
-                // TODO: we assume that every array may be nullable
-                return [true, 'array', $docblock];
-            case TypeKind::NON_NULL:
-                [$_, $children, $docblock] = self::safeClassNameWithNamespace($type->ofType, $namespace);
-                return [false, $children, $docblock];
+                    // TODO: we assume that every array may be nullable
+                    return [true, 'array', $docblock];
+                case TypeKind::NON_NULL:
+                    [$_, $children, $docblock] = $this->safeClassNameWithNamespace($type->ofType, $namespace);
+                    return [false, $children, $docblock];
+                case TypeKind::UNION:
+                    $types = [];
+                    foreach ($this->schema->findType($name)->possibleTypes ?? [] as $possibleType) {
+                        $possibleType = $this->schema->findType($possibleType->name);
+                        [$_, $possibleTypeName, $_] = $this->safeClassNameWithNamespace($possibleType, $namespace);
+                        $types[] = $possibleTypeName;
+                    }
+
+                    return [false, implode('|', $types), null];
+            }
         }
 
         if ($name === null) {
@@ -918,7 +1035,7 @@ class GraphqlGenerator
             return [true, null];
         }
 
-        $name = self::safeName($name);
+        $name = $this->safeName($name);
 
         switch (\strtolower($name)) {
             case 'timestamp':
@@ -946,18 +1063,38 @@ class GraphqlGenerator
         return [true, $name, null];
     }
 
-    private static function safeClassNameWithNamespace(Type $type, string $namespace): array
+    private function safeClassNameWithNamespace(Type $type, string $namespace): array
     {
-        [$nullable, $classname, $docblock] = self::safeClassName($type, $namespace);
+        [$nullable, $classname, $docblock] = $this->safeClassName($type, $namespace);
 
         if (
             $type->kind === TypeKind::LIST
             || $type->kind === TypeKind::NON_NULL
-            || self::shouldSkipType($type)
+            || $this->shouldSkipType($type)
+            || $this->isPrimitive($type->name)
         ) {
             return [$nullable, $classname, $docblock];
         }
 
         return [$nullable, '\\' . trim($namespace, "\\") . '\\' . $classname, $docblock];
+    }
+
+    private function multipad(string $string, int $indent): string
+    {
+        $lines = explode("\n", $string);
+        foreach ($lines as $i => &$line) {
+            if ($i === 0) {
+                continue;
+            }
+
+            $line = $this->pad($line, $indent);
+        }
+
+        return \implode("\n", $lines);
+    }
+
+    private function pad(string $string, int $indent): string
+    {
+        return \str_repeat(' ', $indent * 4) . $string;
     }
 }
