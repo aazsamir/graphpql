@@ -35,7 +35,7 @@ class QueryBuilder
         return $string;        
     }
 
-    private function parseVars(array $vars, int $indent = 0): string
+    private function parseVars(array $vars, int $indent = 0): string|int|float
     {
         $string = null;
 
@@ -59,7 +59,7 @@ class QueryBuilder
         return (string) $string;
     }
 
-    private function parseVarValue(mixed $value, int $indent): string
+    private function parseVarValue(mixed $value, int $indent): string|int|float
     {
         return match (true) {
             is_string($value) => '"' . $value . '"',

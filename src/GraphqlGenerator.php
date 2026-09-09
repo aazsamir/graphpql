@@ -36,7 +36,7 @@ class GraphqlGenerator
         $this->clearGenerated($outputDir);
 
         foreach ($schema->types as $type) {
-            $this->generateType($type, $namespace, $outputDir);
+            $this->generateType($schema, $type, $namespace, $outputDir);
         }
 
         foreach ($schema->queries as $query) {
@@ -644,7 +644,7 @@ class GraphqlGenerator
         \file_put_contents($filename, $printer->printFile($file));
     }
 
-    private function generateType(Type $type, string $namespace, string $outputDir): void
+    private function generateType(Schema $schema, Type $type, string $namespace, string $outputDir): void
     {
         if (self::shouldSkipType($type)) {
             return;
@@ -655,7 +655,7 @@ class GraphqlGenerator
         if ($type->kind === TypeKind::ENUM) {
             $item = $this->generateEnum($type, $namespace);
         } else {
-            $item = $this->generateClass($type, $namespace);
+            $item = $this->generateClass($schema, $type, $namespace, $outputDir);
         }
 
         $this->saveFile($name, $namespace, $outputDir, $item);
@@ -675,7 +675,7 @@ class GraphqlGenerator
         return $enum;
     }
 
-    private function generateClass(Type $type, string $namespace): ClassType
+    private function generateClass(Schema $schema, Type $type, string $namespace, string $outputDir): ClassType
     {
         [$_, $name] = self::safeClassName($type, $namespace);
         $class = new ClassType(
@@ -735,11 +735,23 @@ class GraphqlGenerator
             }
 
             [$_, $selfClassname, $_] = self::safeClassNameWithNamespace($type, $namespace . '\\Fields');
+
+            $primaryType = $field['fieldType']->primary();
+
+            if ($primaryType->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT)) {
+                $childSelection = $this->generateSelectionSet(
+                $schema,
+                $schema->findType($field['fieldType']->primary()->name), $namespace, $outputDir);
+            } else {
+                $childSelection = 'mixed';
+            }
+
             $fieldClassname = $selfClassname . 'Field';
             $method = $class->addMethod($field['name'])
                 ->setStatic()
                 ->setPublic()
-                ->setReturnType($fieldClassname);
+                ->setReturnType($fieldClassname)
+                ->setComment("@return {$fieldClassname}<{$childSelection}>");
 
             $body = <<<PHP
             return {$fieldClassname}::{$field['name']}();
