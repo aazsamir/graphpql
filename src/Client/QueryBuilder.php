@@ -4,29 +4,35 @@ declare(strict_types=1);
 
 namespace Aazsamir\Graphpql\Client;
 
+use Aazsamir\Graphpql\Model\Mutation;
+use Aazsamir\Graphpql\Model\Operation;
 use Aazsamir\Graphpql\Model\Query;
 use Aazsamir\Graphpql\Model\SelectionSet;
 
 class QueryBuilder
 {
-    public function fromQuery(Query $query): string
-    {        
+    public function fromOperation(Operation $operation): string
+    {
+        $name = match (true) {
+            $operation instanceof Query => 'query',
+            $operation instanceof Mutation => 'mutation',
+        };
         $string = <<<GRAPHQL
-        query {
-            {$query::getName()}%s
+        $name {
+            {$operation::getName()}%s
         GRAPHQL;
         $string = \str_replace("\r\n", "\n", $string);
 
         $indent = 2;
 
-        if ($query->getVars()) {
-            $string = sprintf($string, $this->parseVars($query->getVars(), $indent)) . '%s';
+        if ($operation->getVars()) {
+            $string = sprintf($string, $this->parseVars($operation->getVars(), $indent)) . '%s';
         }
 
-        $string = sprintf($string, $this->parseSelectionSet($query->getSelectionSet(), $indent));
+        $string = sprintf($string, $this->parseSelectionSet($operation->getSelectionSet(), $indent));
         $string .= "\n}";
 
-        return $string;
+        return $string;        
     }
 
     private function parseVars(array $vars, int $indent = 0): string
@@ -73,6 +79,10 @@ class QueryBuilder
         $string = "{\n";
 
         foreach ($vars as $name => $value) {
+            if ($value === null) {
+                continue;
+            }
+
             $strValue = $this->parseVarValue($value, $indent);
             $string .= $this->pad("$name: $strValue", $indent) . "\n";
         }
@@ -86,6 +96,10 @@ class QueryBuilder
     {
         $string = "[";
         foreach ($array as $value) {
+            if ($value === null) {
+                continue;
+            }
+
             $string .= $this->parseVarValue($value, $indent);
             $string .= ',';
         }

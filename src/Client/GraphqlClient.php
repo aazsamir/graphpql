@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Aazsamir\Graphpql\Client;
 
-use Aazsamir\Graphpql\Model\Query;
+use Aazsamir\Graphpql\Model\Operation;
 use GuzzleHttp\Psr7\Request;
 use Psr\Http\Client\ClientInterface;
 
@@ -16,9 +16,9 @@ class GraphqlClient
         private QueryBuilder $queryBuilder,
     ) {}
 
-    public function query(Query $query): Response
+    public function request(Operation $query): Response
     {
-        $queryString = $this->queryBuilder->fromQuery($query);
+        $queryString = $this->queryBuilder->fromOperation($query);
         $response = $this->doQuery($queryString);
         $data = \array_first($response['data']);
 

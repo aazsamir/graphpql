@@ -8,6 +8,7 @@ use Aazsamir\Graphpql\Client\GraphqlClient;
 use Aazsamir\Graphpql\Client\QueryBuilder;
 use Aazsamir\Graphpql\Model\GraphEnum;
 use Aazsamir\Graphpql\Model\GraphObject;
+use Aazsamir\Graphpql\Model\Mutation;
 use Aazsamir\Graphpql\Model\ObjectField;
 use Aazsamir\Graphpql\Model\Query;
 use Aazsamir\Graphpql\Model\SelectionSet;
@@ -40,6 +41,10 @@ class Generator
 
         foreach ($schema->queries as $query) {
             $this->generateQuery($schema, $query, $namespace, $outputDir);
+        }
+
+        foreach ($schema->mutations as $mutation) {
+            $this->generateMutation($schema, $mutation, $namespace, $outputDir);
         }
 
         $this->generateApi($schema, $namespace, $outputDir);
@@ -84,10 +89,10 @@ class Generator
             ->setType(GraphqlClient::class);
 
         foreach ($schema->queries as $query) {
-            $classname = $this->getQueryClassname($query);
+            $classname = $this->getOperationClassname($query);
             $method = $class->addMethod($query->name);
-            $this->addQueryArgsToMethod($method, $query, $namespace, false);
-            $args = $this->getQueryConstructorArgs($query, $namespace);
+            $this->addOperationArgsToMethod($method, $query, $namespace, false);
+            $args = $this->getOperationConstructorArgs($query, $namespace);
 
             if ($args == []) {
                 $body = "\$query = new {$namespace}\Query\{$classname}();";
@@ -95,7 +100,7 @@ class Generator
 
             $body = "\$query = new {$namespace}\\Query\\{$classname}(\n";
 
-            foreach ($this->getQueryConstructorArgs($query, $namespace) as $arg) {
+            foreach ($this->getOperationConstructorArgs($query, $namespace) as $arg) {
                 $body .= "    \${$arg['name']},\n";
             }
 
@@ -108,32 +113,105 @@ class Generator
             $method->setReturnType($queryTypeName);
         }
 
+        foreach ($schema->mutations as $mutation) {
+            $classname = $this->getOperationClassname($mutation);
+            $method = $class->addMethod($mutation->name);
+            $this->addOperationArgsToMethod($method, $mutation, $namespace, false);
+            $args = $this->getOperationConstructorArgs($mutation, $namespace);
+
+            if ($args == []) {
+                $body = "\$mutation = new {$namespace}\Mutation\{$classname}();";
+            }
+
+            $body = "\$mutation = new {$namespace}\\Mutation\\{$classname}(\n";
+
+            foreach ($this->getOperationConstructorArgs($mutation, $namespace) as $arg) {
+                $body .= "    \${$arg['name']},\n";
+            }
+
+            $body .= ");\n\n";
+            $body .= 'return $mutation->withClient($this->graphqlClient);';
+            $method->addBody($body);
+
+            $mutationTypeName = $namespace . '\\Mutation\\' . $classname; 
+
+            $method->setReturnType($mutationTypeName);
+        }
+
         $this->saveFile('Api', $namespace, $outputDir, $class);
+    }
+
+    private function generateMutation(Schema $schema, Field $mutation, string $namespace, string $outputDir): void
+    {
+        $name = $this->getOperationClassname($mutation);
+        $returnType = $schema->findType($mutation->type->primary()->name);
+
+        $class = $this->createMutation($mutation, $schema, $namespace);
+
+        $constructor = $this->addConstructor($class);
+        $constructorArgs = $this->getOperationConstructorArgs($mutation, $namespace);
+
+        $this->addOperationArgsToMethod($constructor, $mutation, $namespace);
+        $this->addGetVarsMethod($class, $constructorArgs);
+        $this->addSelectionMethods($class, $schema, $returnType, $namespace, $outputDir);
+        $this->addGraphqlClient($class);
+        $this->addDoMethod($class, $mutation, $schema, $namespace);
+        $this->addOperationDdMethod($class);
+
+        $this->saveFile($name, $namespace . '\\Mutation', $outputDir . '/Mutation', $class);
+    }
+
+    private function createMutation(Field $mutation, Schema $schema, string $namespace): ClassType
+    {
+        $name = $this->getOperationClassname($mutation);
+
+        $class = new ClassType($name);
+        $class->addImplement(Mutation::class);
+        $class->addConstant('MUTATION_NAME', $mutation->name);
+
+        $returnTypeName = $this->getQueryReturnType($mutation, $schema, $namespace);
+        $class->addConstant('MUTATION_RETURN_TYPE', $returnTypeName);
+
+        // add getName
+        $class->addMethod('getName')
+            ->setStatic()
+            ->setPublic()
+            ->setReturnType('string')
+            ->addBody('return self::MUTATION_NAME;');
+
+        // add getReturnType
+        $class->addMethod('getReturnType')
+            ->setStatic()
+            ->setPublic()
+            ->setReturnType('string')
+            ->addBody('return self::MUTATION_RETURN_TYPE;');
+
+        return $class;
     }
 
     private function generateQuery(Schema $schema, Field $query, string $namespace, string $outputDir): void
     {
-        $name = $this->getQueryClassname($query);
+        $name = $this->getOperationClassname($query);
         $returnType = $schema->findType($query->type->primary()->name);
 
         $class = $this->createQuery($query, $schema, $namespace);
 
         $constructor = $this->addConstructor($class);
-        $constructorArgs = $this->getQueryConstructorArgs($query, $namespace);
+        $constructorArgs = $this->getOperationConstructorArgs($query, $namespace);
         
-        $this->addQueryArgsToMethod($constructor, $query, $namespace);
+        $this->addOperationArgsToMethod($constructor, $query, $namespace);
         $this->addGetVarsMethod($class, $constructorArgs);
         $this->addSelectionMethods($class, $schema, $returnType, $namespace, $outputDir);
         $this->addGraphqlClient($class);
         $this->addDoMethod($class, $query, $schema, $namespace);
-        $this->addQueryDdMethod($class);
+        $this->addOperationDdMethod($class);
 
         $this->saveFile($name, $namespace . '\\Query', $outputDir . '/Query', $class);
     }
 
     private function createQuery(Field $query, Schema $schema, string $namespace): ClassType
     {
-        $name = $this->getQueryClassname($query);
+        $name = $this->getOperationClassname($query);
 
         $class = new ClassType($name);
         $class->addImplement(Query::class);
@@ -159,7 +237,7 @@ class Generator
         return $class;
     }
 
-    private function getQueryClassname(Field $query): string
+    private function getOperationClassname(Field $query): string
     {
         return ucfirst($query->name);
     }
@@ -172,7 +250,7 @@ class Generator
     /**
      * @return array{name: string, nullable: bool, type: string, docblock: ?string}[]
      */
-    private function getQueryConstructorArgs(Field $query, string $namespace): array
+    private function getOperationConstructorArgs(Field $query, string $namespace): array
     {
         $constructorArgs = [];
 
@@ -191,9 +269,9 @@ class Generator
         return $constructorArgs;
     }
 
-    private function addQueryArgsToMethod(Method $method, Field $query, string $namespace, bool $promoted = true): void
+    private function addOperationArgsToMethod(Method $method, Field $query, string $namespace, bool $promoted = true): void
     {
-        $args = $this->getQueryConstructorArgs($query, $namespace);
+        $args = $this->getOperationConstructorArgs($query, $namespace);
 
         foreach ($args as $arg) {
             if ($promoted) {
@@ -325,13 +403,13 @@ class Generator
             ->setReturnNullable();
 
         $body = <<<'PHP'
-        $response = $this->graphqlClient->query($this);
+        $response = $this->graphqlClient->request($this);
 
         if ($response->data === null) {
             return null;
         }
 
-        $returnType = self::QUERY_RETURN_TYPE;
+        $returnType = self::getReturnType();
 
         PHP;
 
@@ -349,21 +427,21 @@ class Generator
         $method->setBody($body);
     }
 
-    private function addQueryDdMethod(ClassType $class): void
+    private function addOperationDdMethod(ClassType $class): void
     {
         $method = $class->addMethod('dd')
             ->setPublic()
             ->setReturnType('never');
 
-        $body = <<<'PHP'
-        $content = new \%s()->fromQuery($this);
+        $body = <<<PHP
+        \$content = new \%s()->fromOperation(\$this);
 
         if (function_exists('dd')) {
-            dd($content);
+            dd(\$content);
         }
 
         echo "<pre><br>\n";
-        echo($content);
+        echo(\$content);
         echo "</pre><br>\n";
         exit(1);
         PHP;
@@ -386,7 +464,7 @@ class Generator
         [$_, $classname, $_] = self::safeClassName($type, $namespace);
 
         if ($classname === 'mixed') {
-            throw new \Exception('Unreachable');
+            return 'mixed';
         }
 
         $classname .= 'SelectionSet';
@@ -621,6 +699,7 @@ class Generator
                 'nullable' => $nullable,
                 'docblock' => $docblock,
                 'fieldType' => $field->type,
+                'input' => false,
             ];
 
             $class->addProperty($field->name)
@@ -639,6 +718,7 @@ class Generator
                 'nullable' => $nullable,
                 'docblock' => $docblock,
                 'fieldType' => $field->type,
+                'input' => true,
             ];
 
             $class->addProperty($field->name)
@@ -650,6 +730,10 @@ class Generator
 
         // add fast field accessors
         foreach ($fields as $field) {
+            if ($field['input']) {
+                continue;
+            }
+
             [$_, $selfClassname, $_] = self::safeClassNameWithNamespace($type, $namespace . '\\Fields');
             $fieldClassname = $selfClassname . 'Field';
             $method = $class->addMethod($field['name'])
