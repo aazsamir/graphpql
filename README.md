@@ -40,9 +40,9 @@ And use generated API
 use Aazsamir\Graphpql\Client\ConnArgs;
 use Aazsamir\Graphpql\Client\GraphqlClient;
 use App\Generated\Api;
-use App\Generated\Fields\FindImagesResultTypeField;
-use App\Generated\Fields\ImageField;
-use App\Generated\Fields\ImagePathsTypeField;
+use App\Generated\FindImagesResultType;
+use App\Generated\Image;
+use App\Generated\ImagePathsType;
 use GuzzleHttp\Client;
 
 $client = new GraphqlClient(
@@ -56,12 +56,12 @@ $api = new Api($client);
 $query = $api->findImages(ids: ['1', '2'])
     ->selector(
         fn ($x) => $x->select(
-            FindImagesResultTypeField::images()->selector(
+            FindImagesResultType::images()->selector(
                 fn($x) => $x->select(
-                    ImageField::id(),
-                    ImageField::title(),
-                    ImageField::paths()->selector(fn ($x) => $x->select(
-                        ImagePathsTypeField::image(),
+                    Image::id(),
+                    Image::title(),
+                    Image::paths()->selector(fn ($x) => $x->select(
+                        ImagePathsType::image(),
                     ))
                 )
             )

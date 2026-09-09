@@ -648,8 +648,23 @@ class Generator
                 ->setPublic();
         }
 
+        // add fast field accessors
+        foreach ($fields as $field) {
+            [$_, $selfClassname, $_] = self::safeClassNameWithNamespace($type, $namespace . '\\Fields');
+            $fieldClassname = $selfClassname . 'Field';
+            $method = $class->addMethod($field['name'])
+                ->setStatic()
+                ->setPublic()
+                ->setReturnType($fieldClassname);
+
+            $body = <<<PHP
+            return {$fieldClassname}::{$field['name']}();
+            PHP;
+            $method->addBody($body);
+        }
+
         // add new
-        $method = $class->addMethod('new')
+        $method = $class->addMethod('new', true)
             ->setStatic()
             ->setPublic()
             ->setReturnType('self');
@@ -658,6 +673,8 @@ class Generator
             $self = new self();
 
         PHP;
+
+        usort($fields, fn ($a, $b) => $a['nullable'] <=> $b['nullable']);
 
         foreach ($fields as $field) {
             $parameter = $method->addParameter($field['name'])
