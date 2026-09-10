@@ -12,6 +12,8 @@ use Aazsamir\Graphpql\Generator\Pad;
 use Aazsamir\Graphpql\Model\GraphEnum;
 use Aazsamir\Graphpql\Model\GraphObject;
 use Aazsamir\Graphpql\Model\Mutation;
+use Aazsamir\Graphpql\Model\NullField;
+use Aazsamir\Graphpql\Model\NullSelectionSet;
 use Aazsamir\Graphpql\Model\ObjectField;
 use Aazsamir\Graphpql\Model\Query;
 use Aazsamir\Graphpql\Model\SelectionSet;
@@ -426,8 +428,12 @@ class GraphqlGenerator
     {
         [$_, $classname, $_] = $this->safeClassName($type->primary(), $namespace, true);
 
+        if ($this->isPrimitive($classname)) {
+            return '\\' . NullSelectionSet::class;
+        }
+
         if ($classname === 'mixed') {
-            return 'mixed';
+            return '\\' . NullSelectionSet::class;
         }
 
         $classname .= 'SelectionSet';
@@ -495,6 +501,10 @@ class GraphqlGenerator
 
         if ($classname === 'mixed') {
             throw new \Exception('Unreachable');
+        }
+
+        if ($this->isPrimitive($classname)) {
+            return '\\' . NullField::class;
         }
 
         $classname .= 'Field';
@@ -745,6 +755,9 @@ class GraphqlGenerator
             $namespace,
             $outputDir,
         );
+        if ($selectionType === 'mixed') {
+            dd($returnType);
+        }
 
         $class->addProperty('selection')->setType($selectionType)->setPrivate();
 
@@ -788,7 +801,7 @@ class GraphqlGenerator
         $class->addMethod('getSelectionSet')
             ->setPublic()
             ->setReturnType($selectionType)
-            ->addBody('return $this->selection;');
+            ->addBody(sprintf('return isset($this->selection) ? $this->selection : new \%s;', NullSelectionSet::class));
     }
 
     private function addGraphqlClient(ClassType $class): void
@@ -836,16 +849,17 @@ class GraphqlGenerator
         }
 
         $returnType = self::getReturnType();
-
         PHP;
+        $body .= "\n\n";
 
         if ($isArray) {
             $body .= <<<'PHP'
-
             return array_map(fn ($x) => $returnType::fromArray($x), $response->data);
             PHP;
             $method->setReturnType('array');
             $method->addComment("@return array<$returnTypeName>");
+        } elseif ($this->isPrimitive($returnTypeName)) {
+            $body .= 'return $response->data;';
         } else {
             $body .= 'return $returnType::fromArray($response->data);';
         }

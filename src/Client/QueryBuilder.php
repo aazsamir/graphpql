@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aazsamir\Graphpql\Client;
 
 use Aazsamir\Graphpql\Model\Mutation;
+use Aazsamir\Graphpql\Model\NullSelectionSet;
 use Aazsamir\Graphpql\Model\Operation;
 use Aazsamir\Graphpql\Model\Query;
 use Aazsamir\Graphpql\Model\SelectionSet;
@@ -112,6 +113,10 @@ class QueryBuilder
 
     private function parseSelectionSet(SelectionSet $set, int $indent = 0, ?string $preset = null): string
     {
+        if ($set instanceof NullSelectionSet) {
+            return '';
+        }
+
         $string = " {\n";
 
         if ($preset) {
