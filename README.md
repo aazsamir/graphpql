@@ -4,7 +4,13 @@ Graphpql is a library for code generation of types, queries and mutations based 
 
 ## Usage
 
-First, create a script for code generation.
+Install `graphpql` with composer.
+
+```
+composer require aazsamir/graphpql
+```
+
+Create a script for code generation.
 
 ```php
 <?php
@@ -92,9 +98,9 @@ query {
 */
 ```
 
-## State of project
+## Docs
 
-Project is still experimental and under construction. Do not use it.
+Checkout docs at [docs/docs.md](./docs/docs.md) for more information.
 
 ## License
 
