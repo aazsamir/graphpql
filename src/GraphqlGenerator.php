@@ -314,7 +314,7 @@ class GraphqlGenerator
                 $conditionals = sprintf(
                     $conditionals,
                     Pad::multipad(
-                        "self::conditionalIf(\n\$data['__typename'] === '{$possibleType->name}',\nfn () => {$possibleTypeClassname}::fromArray(\$data),\nfn () => %s\n)",
+                        "(\$data['__typename'] ?? '') === '{$possibleType->name}'\n? ({$possibleTypeClassname}::fromArray(\$data))\n: (%s)",
                         $loopIndent,
                     ),
                 );
@@ -337,11 +337,11 @@ class GraphqlGenerator
             $body = <<<PHP
             array_map(function (\$data) {
                 if (\$data === []) {
-                    return null;
+                    return [];
                 }
 
                 return %s;
-            }, {$source} ?? []);
+            }, {$source} ?? [])
             PHP;
 
             $body = Pad::multipad($body, $indent);
