@@ -21,7 +21,7 @@ $schema = $client->fetchSchema(new ConnArgs(
     endpoint: 'http://localhost:9999/graphql',
 ));
 
-$generator = new GraphqlGenerator();
+$generator = GraphqlGenerator::default();
 $generator->generate(
     $schema,
     '\\App\\Generated',
