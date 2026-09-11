@@ -23,7 +23,7 @@ class SelectionSetGenerator
 
     public function generateSelectionSet(Type $type, Namespaced $namespace, string $outputDir): string
     {
-        [$_, $classname, $_] = $this->nameResolver->safeClassName($type->primary(), $namespace, true);
+        [$_, $classname, $_] = $this->nameResolver->className($type->primary(), $namespace, true);
 
         if ($this->isPrimitive($classname)) {
             return '\\' . NullSelectionSet::class;

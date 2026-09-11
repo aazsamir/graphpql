@@ -133,7 +133,7 @@ class OperationGenerator
     private function getOperationReturnType(Field $operation, Namespaced $namespace): string
     {
         $returnType = $this->schema->findType($operation->type->primary()->name);
-        [$_, $returnTypeName, $_] = $this->nameResolver->safeClassNameWithNamespace($returnType, $namespace);
+        [$_, $returnTypeName, $_] = $this->nameResolver->classNameWithNamespace($returnType, $namespace);
 
         return $returnTypeName;
     }
@@ -338,7 +338,7 @@ class OperationGenerator
         $args = [];
 
         foreach ($field->args ?? [] as $arg) {
-            [$nullable, $classname, $docblock] = $this->nameResolver->safeClassNameWithNamespace($arg->type, $namespace);
+            [$nullable, $classname, $docblock] = $this->nameResolver->classNameWithNamespace($arg->type, $namespace);
             $args[] = [
                 'name' => $arg->name,
                 'nullable' => $nullable,

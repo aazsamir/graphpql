@@ -31,7 +31,7 @@ class FieldSetGenerator
 
     public function generateFieldSet(Type $type, Namespaced $namespace, string $outputDir): string
     {
-        [$_, $classname, $_] = $this->nameResolver->safeClassName($type, $namespace, true);
+        [$_, $classname, $_] = $this->nameResolver->className($type, $namespace, true);
 
         if ($classname === 'mixed') {
             throw new \Exception('Unreachable');
@@ -103,7 +103,7 @@ class FieldSetGenerator
 
         if ($type->primary()->kind->isAny(TypeKind::UNION)) {
             foreach ($this->schema->findType($type->primary()->name)->possibleTypes ?? [] as $possibleType) {
-                [$_, $possibleTypeClassname, $_] = $this->nameResolver->safeClassNameWithNamespace($possibleType, $namespace->add('SelectionSet'));
+                [$_, $possibleTypeClassname, $_] = $this->nameResolver->classNameWithNamespace($possibleType, $namespace->add('SelectionSet'));
                 $possibleTypeClassname .= 'SelectionSet';
                 $method = $class->addMethod('on' . $possibleType->name)
                     ->setReturnType('self')

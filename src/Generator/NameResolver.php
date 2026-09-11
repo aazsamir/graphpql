@@ -23,14 +23,14 @@ class NameResolver
         return $name;
     }
 
-    public function safeClassName(Type $type, Namespaced $namespace, bool $skipContainers = false): array
+    public function className(Type $type, Namespaced $namespace, bool $skipContainers = false): array
     {
         $name = $type->name;
 
         if ($skipContainers === false) {
             switch ($type->kind) {
                 case TypeKind::LIST:
-                    [$nullable, $classname, $docblock] = $this->safeClassNameWithNamespace($type->ofType, $namespace);
+                    [$nullable, $classname, $docblock] = $this->classNameWithNamespace($type->ofType, $namespace);
 
                     if ($docblock) {
                         $docblock = 'array<' . $docblock . '>';
@@ -41,13 +41,13 @@ class NameResolver
                     // TODO: we assume that every array may be nullable
                     return [true, 'array', $docblock];
                 case TypeKind::NON_NULL:
-                    [$_, $children, $docblock] = $this->safeClassNameWithNamespace($type->ofType, $namespace);
+                    [$_, $children, $docblock] = $this->classNameWithNamespace($type->ofType, $namespace);
                     return [false, $children, $docblock];
                 case TypeKind::UNION:
                     $types = [];
                     foreach ($this->schema->findType($name)->possibleTypes ?? [] as $possibleType) {
                         $possibleType = $this->schema->findType($possibleType->name);
-                        [$_, $possibleTypeName, $_] = $this->safeClassNameWithNamespace($possibleType, $namespace);
+                        [$_, $possibleTypeName, $_] = $this->classNameWithNamespace($possibleType, $namespace);
                         $types[] = $possibleTypeName;
                     }
 
@@ -87,9 +87,9 @@ class NameResolver
         return [true, $name, null];
     }
 
-    public function safeClassNameWithNamespace(Type $type, Namespaced $namespace): array
+    public function classNameWithNamespace(Type $type, Namespaced $namespace): array
     {
-        [$nullable, $classname, $docblock] = $this->safeClassName($type, $namespace);
+        [$nullable, $classname, $docblock] = $this->className($type, $namespace);
 
         if (
             $type->kind === TypeKind::LIST

@@ -29,7 +29,7 @@ class TypeGenerator
             return;
         }
 
-        [$_, $name] = $this->nameResolver->safeClassName($type, $namespace);
+        [$_, $name] = $this->nameResolver->className($type, $namespace);
 
         if ($type->kind === TypeKind::ENUM) {
             $item = $this->generateEnum($type, $namespace);
@@ -42,7 +42,7 @@ class TypeGenerator
 
     private function generateEnum(Type $type, Namespaced $namespace): EnumType
     {
-        [$_, $name] = $this->nameResolver->safeClassName($type, $namespace);
+        [$_, $name] = $this->nameResolver->className($type, $namespace);
         $enum = new EnumType($name);
         $enum->addImplement(GraphEnum::class);
         $enum->setType('string');
@@ -60,24 +60,24 @@ class TypeGenerator
 
     private function generateClass(Type $type, Namespaced $namespace, string $outputDir): ClassType
     {
-        [$_, $name] = $this->nameResolver->safeClassName($type, $namespace);
+        [$_, $name] = $this->nameResolver->className($type, $namespace);
         $class = new ClassType(
             $name,
         );
         $class->addImplement(GraphObject::class);
         $class->addTrait('Aazsamir\Graphpql\Model\ToArray');
-        $this->addTypeProperties($type, $namespace, $class);
+        $this->addProperties($type, $namespace, $class);
         $this->addFastFieldAccessors($type, $namespace, $class, $outputDir);
-        $this->addTypeNewMethod($type, $namespace, $class);
-        $this->addTypeFromArrayMethod($type, $namespace, $class);
+        $this->addNewMethod($type, $namespace, $class);
+        $this->addFromArrayMethod($type, $namespace, $class);
 
         return $class;
     }
 
-    private function addTypeProperties(Type $type, Namespaced $namespace, ClassType $class): void
+    private function addProperties(Type $type, Namespaced $namespace, ClassType $class): void
     {
         foreach ($type->fields as $field) {
-            [$nullable, $classname, $docblock] = $this->nameResolver->safeClassNameWithNamespace($field->type, $namespace);
+            [$nullable, $classname, $docblock] = $this->nameResolver->classNameWithNamespace($field->type, $namespace);
 
             $class->addProperty($field->name)
                 ->setType($classname)
@@ -87,7 +87,7 @@ class TypeGenerator
         }
 
         foreach ($type->inputFields as $field) {
-            [$nullable, $classname, $docblock] = $this->nameResolver->safeClassNameWithNamespace($field->type, $namespace);
+            [$nullable, $classname, $docblock] = $this->nameResolver->classNameWithNamespace($field->type, $namespace);
 
             $class->addProperty($field->name)
                 ->setNullable($nullable)
@@ -101,7 +101,7 @@ class TypeGenerator
     {
         // add fast field accessors
         foreach ($type->fields as $field) {
-            [$_, $selfClassname, $_] = $this->nameResolver->safeClassNameWithNamespace($type, $namespace->add('Fields'));
+            [$_, $selfClassname, $_] = $this->nameResolver->classNameWithNamespace($type, $namespace->add('Fields'));
 
             $primaryType = $field->type->primary();
 
@@ -129,7 +129,7 @@ class TypeGenerator
         }
     }
 
-    private function addTypeNewMethod(Type $type, Namespaced $namespace, ClassType $class): void
+    private function addNewMethod(Type $type, Namespaced $namespace, ClassType $class): void
     {
         // add new
         $method = $class->addMethod('new', true)
@@ -163,7 +163,7 @@ class TypeGenerator
         $method->addBody($body);
     }
 
-    private function addTypeFromArrayMethod(Type $type, Namespaced $namespace, ClassType $class): void
+    private function addFromArrayMethod(Type $type, Namespaced $namespace, ClassType $class): void
     {
         // add fromArray
         $method = $class->addMethod('fromArray')
@@ -214,7 +214,7 @@ class TypeGenerator
             if ($type->ofType->kind->isAny(TypeKind::LIST)) {
                 $classname = 'array';
             } else {
-                [$_, $classname, $_] = $this->nameResolver->safeClassNameWithNamespace($type->ofType, $namespace);
+                [$_, $classname, $_] = $this->nameResolver->classNameWithNamespace($type->ofType, $namespace);
             }
 
             return $this->addFromArraySerVar(
@@ -236,7 +236,7 @@ class TypeGenerator
 
             foreach ($primary->possibleTypes ?? [] as $possibleType) {
                 $possibleType = $this->schema->findType($possibleType->name);
-                [$_, $possibleTypeClassname, $_] = $this->nameResolver->safeClassNameWithNamespace($possibleType, $namespace);
+                [$_, $possibleTypeClassname, $_] = $this->nameResolver->classNameWithNamespace($possibleType, $namespace);
                 $conditionals = sprintf(
                     $conditionals,
                     Pad::multipad(
@@ -309,7 +309,7 @@ class TypeGenerator
         $fields = [];
 
         foreach (array_merge($type->fields, $type->inputFields) as $field) {
-            [$nullable, $classname, $docblock] = $this->nameResolver->safeClassNameWithNamespace($field->type, $namespace);
+            [$nullable, $classname, $docblock] = $this->nameResolver->classNameWithNamespace($field->type, $namespace);
 
             $fields[] = [
                 'name' => $field->name,
