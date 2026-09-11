@@ -7,8 +7,10 @@ namespace Aazsamir\Graphpql;
 use Aazsamir\Graphpql\Client\GraphqlClient;
 use Aazsamir\Graphpql\Client\QueryBuilder;
 use Aazsamir\Graphpql\Generator\FileAccess;
+use Aazsamir\Graphpql\Generator\NameResolver;
 use Aazsamir\Graphpql\Generator\Namespaced;
 use Aazsamir\Graphpql\Generator\Pad;
+use Aazsamir\Graphpql\Generator\TypeSkip;
 use Aazsamir\Graphpql\Model\GraphEnum;
 use Aazsamir\Graphpql\Model\GraphObject;
 use Aazsamir\Graphpql\Model\Mutation;
@@ -28,8 +30,11 @@ use Nette\PhpGenerator\Method;
 
 class GraphqlGenerator
 {
+    use TypeSkip;
+
     private array $skip = [];
     private Schema $schema;
+    private NameResolver $nameResolver;
 
     public function __construct(
         private FileAccess $fileAccess,
@@ -46,6 +51,7 @@ class GraphqlGenerator
         string $outputDir
     ): void {
         $this->schema = $schema;
+        $this->nameResolver = new NameResolver($schema);
         $namespace = new Namespaced($namespace);
         $this->fileAccess->ensureClearDir($outputDir);
 
@@ -891,142 +897,14 @@ class GraphqlGenerator
         $method->addBody($body);
     }
 
-    private function shouldSkipType(Type $type): bool
-    {
-        if ($type->kind === TypeKind::SCALAR) {
-            return true;
-        }
-
-        if ($type->kind === TypeKind::UNION) {
-            return true;
-        }
-
-        return $this->isPrimitive($type->name)
-            || $this->isNativeGraphType($type->name);
-    }
-
-    private function isPrimitive(string $name): bool
-    {
-        return in_array(
-            \strtolower($name),
-            [
-                'string',
-                'int',
-                'int64',
-                'float',
-                'bool',
-                'boolean',
-                'id',
-            ],
-        );
-    }
-
-    private function isNativeGraphType(string $name): bool
-    {
-        return in_array(
-            \strtolower($name),
-            [
-                '__directive',
-                '__directivelocation',
-                '__enumvalue',
-                '__field',
-                '__inputvalue',
-                '__schema',
-                '__type',
-                '__typekind',
-                'query',
-                'mutation',
-                'subscription',
-                'time',
-                'timestamp',
-            ],
-        );
-    }
-
-    public function safeName(string $name): string
-    {
-        $name = preg_replace('/[^a-zA-Z0-9]/', 'x', $name);
-
-        return $name;
-    }
-
     public function safeClassName(Type $type, Namespaced $namespace, bool $skipContainers = false): array
     {
-        $name = $type->name;
-
-        if ($skipContainers === false) {
-            switch ($type->kind) {
-                case TypeKind::LIST:
-                    [$nullable, $classname, $docblock] = $this->safeClassNameWithNamespace($type->ofType, $namespace);
-
-                    if ($docblock) {
-                        $docblock = 'array<' . $docblock . '>';
-                    } else {
-                        $docblock = 'array<' . $classname . '>';
-                    }
-
-                    // TODO: we assume that every array may be nullable
-                    return [true, 'array', $docblock];
-                case TypeKind::NON_NULL:
-                    [$_, $children, $docblock] = $this->safeClassNameWithNamespace($type->ofType, $namespace);
-                    return [false, $children, $docblock];
-                case TypeKind::UNION:
-                    $types = [];
-                    foreach ($this->schema->findType($name)->possibleTypes ?? [] as $possibleType) {
-                        $possibleType = $this->schema->findType($possibleType->name);
-                        [$_, $possibleTypeName, $_] = $this->safeClassNameWithNamespace($possibleType, $namespace);
-                        $types[] = $possibleTypeName;
-                    }
-
-                    return [false, implode('|', $types), null];
-            }
-        }
-
-        if ($name === null) {
-            throw new \Exception('Unreachable');
-        }
-
-        $name = $this->safeName($name);
-
-        switch (\strtolower($name)) {
-            case 'timestamp':
-            case 'time':
-                return [true, '\\' . \DateTimeInterface::class, null];
-            case 'int64':
-                return [true, 'int', null];
-            case 'id':
-                return [true, 'string', null];
-            case 'boolean':
-                return [true, 'bool', null];
-            case 'string':
-            case 'int':
-            case 'float':
-            case 'bool':
-                return [true, \strtolower($name), null];
-        }
-
-        if ($type->kind === TypeKind::SCALAR) {
-            return [true, 'mixed', null];
-        }
-
-        $name = ucfirst($name);
-
-        return [true, $name, null];
+        return $this->nameResolver->safeClassName($type, $namespace, $skipContainers);
     }
 
     private function safeClassNameWithNamespace(Type $type, Namespaced $namespace): array
     {
-        [$nullable, $classname, $docblock] = $this->safeClassName($type, $namespace);
-
-        if (
-            $type->kind === TypeKind::LIST
-            || $type->kind === TypeKind::NON_NULL
-            || $this->shouldSkipType($type)
-        ) {
-            return [$nullable, $classname, $docblock];
-        }
-
-        return [$nullable, $namespace->add($classname)->toString(), $docblock];
+        return $this->nameResolver->safeClassNameWithNamespace($type, $namespace);
     }
 
     private function saveFile(string $name, Namespaced $namespace, string $outputDir, ClassLike $item): void
