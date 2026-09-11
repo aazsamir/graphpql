@@ -187,7 +187,7 @@ class OperationGenerator
         );
 
         if ($selectionType === 'mixed') {
-            dd($returnType);
+            throw new \Exception('Unreachable');
         }
 
         $class->addProperty('selection')->setType($selectionType)->setPrivate();

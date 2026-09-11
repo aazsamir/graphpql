@@ -152,17 +152,12 @@ class SchemaClient
         }
         GRAPHQL;
         $response = $this->doQuery($conn, $query);
-        // dd($response['data']['__schema']['queryType']);
         $types = [];
         $queries = [];
         $mutations = [];
 
         foreach ($response['data']['__schema']['types'] as $type) {
-            try {
-                $typeInstance = $this->parseType($type);
-            } catch (\Throwable $e) {
-                dd($type, $e->getMessage());
-            }
+            $typeInstance = $this->parseType($type);
             $types[] = $typeInstance;
         }
 
