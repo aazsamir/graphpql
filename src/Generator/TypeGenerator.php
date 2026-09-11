@@ -240,9 +240,21 @@ class TypeGenerator
                 $conditionals = sprintf(
                     $conditionals,
                     Pad::multipad(
-                        "(\$data['__typename'] ?? '') === '{$possibleType->name}'\n? ({$possibleTypeClassname}::fromArray(\$data))\n: (%s)",
+                        "(\$data['__typename'] ?? '') === '{$possibleType->name}'\n? (%s)\n: (%s)",
                         $loopIndent,
                     ),
+                );
+                $conditionals = sprintf(
+                    $conditionals, $this->addFromArraySerVar(
+                        $namespace,
+                        $fieldName,
+                        $possibleTypeClassname,
+                        null,
+                        $possibleType,
+                        $source,
+                        $indent + 1,
+                    ),
+                    '%s',
                 );
                 $loopIndent += 1;
             }
