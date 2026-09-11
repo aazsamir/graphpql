@@ -51,6 +51,7 @@ class GraphqlClient
             $this->connArgs->endpoint,
             [
                 'Content-Type' => 'application/json',
+                'User-Agent' => 'graphpql/1.0',
             ],
             trim($body),
         );
