@@ -48,7 +48,11 @@ class TypeGenerator
         $enum->setType('string');
 
         foreach ($type->enumValues as $enumValue) {
-            $enum->addCase($enumValue->name, $enumValue->name);
+            $case = $enum->addCase($enumValue->name, $enumValue->name);
+
+            if ($enumValue->isDeprecated) {
+                $case->addComment('@deprecated ' . $enumValue->deprecationReason);
+            }
         }
 
         return $enum;

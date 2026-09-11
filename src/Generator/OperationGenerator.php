@@ -80,6 +80,10 @@ class OperationGenerator
                 $operationTypeName = $namespace->add($operationType)->add($classname)->toString();
 
                 $method->setReturnType($operationTypeName);
+
+                if ($operation->isDeprecated) {
+                    $method->addComment('@deprecated ' . $operation->deprecationReason);
+                }
             }
         }
 
@@ -118,6 +122,10 @@ class OperationGenerator
             ->setPublic()
             ->setReturnType('string')
             ->addBody("return self::RETURN_TYPE;");
+
+        if ($operation->isDeprecated) {
+            $class->addComment('@deprecated ' . $operation->deprecationReason);
+        }
 
         return $class;
     }
