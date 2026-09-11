@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aazsamir\Graphpql\Client;
 
+use Aazsamir\Graphpql\Generator\Pad;
 use Aazsamir\Graphpql\Model\Mutation;
 use Aazsamir\Graphpql\Model\NullSelectionSet;
 use Aazsamir\Graphpql\Model\Operation;
@@ -50,11 +51,11 @@ class QueryBuilder
             }
 
             $strValue = $this->parseVarValue($value, $indent);
-            $string .= $this->pad("$name: $strValue", $indent) . "\n";
+            $string .= Pad::pad("$name: $strValue", $indent) . "\n";
         }
 
         if ($string !== null) {
-            $string .= $this->pad(")", $indent - 1);
+            $string .= Pad::pad(")", $indent - 1);
         }
 
         return (string) $string;
@@ -85,10 +86,10 @@ class QueryBuilder
             }
 
             $strValue = $this->parseVarValue($value, $indent);
-            $string .= $this->pad("$name: $strValue", $indent) . "\n";
+            $string .= Pad::pad("$name: $strValue", $indent) . "\n";
         }
 
-        $string .= $this->pad("}", $indent - 1);
+        $string .= Pad::pad("}", $indent - 1);
 
         return $string;        
     }
@@ -126,14 +127,14 @@ class QueryBuilder
 
         foreach ($set->getSelection() as $field) {
             if ($field->getUnion()) {
-                $string .= $this->pad("... on {$field->getUnion()} ", $indent);
-                $string .= $this->parseSelectionSet($field->getChild(), $indent + 1, $this->pad('__typename', $indent + 1));
+                $string .= Pad::pad("... on {$field->getUnion()} ", $indent);
+                $string .= $this->parseSelectionSet($field->getChild(), $indent + 1, Pad::pad('__typename', $indent + 1));
                 $string .= "\n";
 
                 continue;
             }
 
-            $string .= $this->pad($field->getName(), $indent);
+            $string .= Pad::pad($field->getName(), $indent);
 
             if ($field->getChild()) {
                 $string .= $this->parseSelectionSet($field->getChild(), $indent + 1);
@@ -142,13 +143,8 @@ class QueryBuilder
             $string .= "\n";
         }
 
-        $string .= $this->pad("}", $indent - 1);
+        $string .= Pad::pad("}", $indent - 1);
 
         return $string;
-    }
-
-    private function pad(string $string, int $indent): string
-    {
-        return \str_repeat(' ', $indent * 4) . $string;
     }
 }
