@@ -72,7 +72,7 @@ class TypeGenerator
 
     private function addTypeProperties(Type $type, Namespaced $namespace, ClassType $class): void
     {
-        foreach ($type->fields ?? [] as $field) {
+        foreach ($type->fields as $field) {
             [$nullable, $classname, $docblock] = $this->nameResolver->safeClassNameWithNamespace($field->type, $namespace);
 
             $class->addProperty($field->name)
@@ -82,7 +82,7 @@ class TypeGenerator
                 ->setPublic();
         }
 
-        foreach ($type->inputFields ?? [] as $field) {
+        foreach ($type->inputFields as $field) {
             [$nullable, $classname, $docblock] = $this->nameResolver->safeClassNameWithNamespace($field->type, $namespace);
 
             $class->addProperty($field->name)

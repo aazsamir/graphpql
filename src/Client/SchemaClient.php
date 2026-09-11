@@ -53,7 +53,6 @@ class SchemaClient
             kind
             name
             description
-            specifiedByURL
             fields(includeDeprecated: true) {
                 name
                 description
@@ -66,7 +65,7 @@ class SchemaClient
                 isDeprecated
                 deprecationReason
             }
-            inputFields(includeDeprecated: true) {
+            inputFields {
                 ...InputValue
             }
             interfaces {
@@ -90,42 +89,32 @@ class SchemaClient
                 ...TypeRef
             }
             defaultValue
-            isDeprecated
-            deprecationReason
         }
 
         fragment TypeRef on __Type {
             kind
             name
-            specifiedByURL
             ofType {
                 kind
                 name
-                specifiedByURL
                 ofType {
                     kind
                     name
-                    specifiedByURL
                     ofType {
                         kind
                         name
-                        specifiedByURL
                         ofType {
                             kind
                             name
-                            specifiedByURL
                             ofType {
                                 kind
                                 name
-                                specifiedByURL
                                 ofType {
                                     kind
                                     name
-                                    specifiedByURL
                                     ofType {
                                         kind
                                         name
-                                        specifiedByURL
                                     }
                                 }
                             }
@@ -156,17 +145,21 @@ class SchemaClient
         $queries = [];
         $mutations = [];
 
+        if (empty($response['data'])) {
+            throw new \Exception('Introspection failed. ' . json_encode($response['errors'] ?? []));
+        }
+
         foreach ($response['data']['__schema']['types'] as $type) {
             $typeInstance = $this->parseType($type);
             $types[] = $typeInstance;
         }
 
-        foreach ($response['data']['__schema']['queryType']['fields'] as $queryType) {
+        foreach ($response['data']['__schema']['queryType']['fields'] ?? [] as $queryType) {
             $query = $this->parseField($queryType);
             $queries[] = $query;
         }
 
-        foreach ($response['data']['__schema']['mutationType']['fields'] as $mutationType) {
+        foreach ($response['data']['__schema']['mutationType']['fields'] ?? [] as $mutationType) {
             $mutation = $this->parseField($mutationType);
             $mutations[] = $mutation;
         }
@@ -184,30 +177,25 @@ class SchemaClient
             description: $type['description'] ?? null,
             fields: $fields,
             inputFields: $inputFields,
-            interfaces: $type['interfaces'] ?? null,
+            interfaces: $type['interfaces'] ?? [],
             enumValues: $enumValues,
-            // possibleTypes: $type['possibleTypes']
             possibleTypes: array_map($this->parseType(...), $type['possibleTypes'] ?? []),
         );
     }
 
     private function parseProperties(array $data): array
     {
-        $fields = null;
-        $inputFields = null;
-        $enumValues = null;
+        $fields = [];
+        $inputFields = [];
+        $enumValues = [];
 
         if (isset($data['fields'])) {
-            $fields = [];
-
             foreach ($data['fields'] as $field) {
                 $fields[] = $this->parseField($field);
             }
         }
 
         if (isset($data['inputFields'])) {
-            $inputFields = [];
-
             foreach ($data['inputFields'] as $inputField) {
                 $inputFields[] = new InputField(
                     name: $inputField['name'],
@@ -219,14 +207,12 @@ class SchemaClient
         }
 
         if (isset($data['enumValues'])) {
-            $enumValues = [];
-
             foreach ($data['enumValues'] as $enumValue) {
                 $enumValues[] = new EnumValue(
                     name: $enumValue['name'],
                     description: $enumValue['description'],
-                    isDeprecated: $enumValue['isDeprecated'],
-                    deprecationReason: $enumValue['deprecationReason']
+                    isDeprecated: $enumValue['isDeprecated'] ?? false,
+                    deprecationReason: $enumValue['deprecationReason'] ?? null,
                 );
             }
         }
@@ -252,7 +238,7 @@ class SchemaClient
             description: $data['description'],
             args: $args,
             type: Type::fromArray($data['type']),
-            isDeprecated: $data['isDeprecated'] ?? null,
+            isDeprecated: $data['isDeprecated'] ?? false,
             deprecationReason: $data['deprecationReason'] ?? null,
         );
     }

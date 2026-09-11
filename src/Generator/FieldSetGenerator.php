@@ -59,7 +59,7 @@ class FieldSetGenerator
         $class->addProperty('child')->setType(SelectionSet::class)->setPrivate();
         $class->addProperty('union')->setType('?string')->setPrivate()->setValue(null);
 
-        foreach ($type->fields ?? [] as $field) {
+        foreach ($type->fields as $field) {
             $docblock = '@return self<mixed>';
 
             if ($field->type->primary()->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION)) {
