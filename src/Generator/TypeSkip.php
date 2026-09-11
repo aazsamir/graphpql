@@ -9,6 +9,8 @@ use Aazsamir\Graphpql\Schema\TypeKind;
 
 trait TypeSkip
 {
+    private array $skip = [];
+
     private function shouldSkipType(Type $type): bool
     {
         if ($type->kind === TypeKind::SCALAR) {
