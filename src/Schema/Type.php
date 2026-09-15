@@ -44,6 +44,11 @@ readonly class Type
         return $this->ofType?->primary() ?? $this;
     }
 
+    public function unwrap(): self
+    {
+        return $this->kind === TypeKind::NON_NULL ? $this->ofType : $this;
+    }
+
     public function isArray(): bool
     {
         return $this->kind === TypeKind::LIST

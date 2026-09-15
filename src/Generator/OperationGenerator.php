@@ -107,9 +107,6 @@ class OperationGenerator
         $class->addImplement($interface);
         $class->addConstant("NAME", $operation->name);
 
-        $returnTypeName = $this->getOperationReturnType($operation, $namespace);
-        $class->addConstant("RETURN_TYPE", $returnTypeName);
-
         // add getName
         $class->addMethod('getName')
             ->setStatic()
@@ -117,26 +114,11 @@ class OperationGenerator
             ->setReturnType('string')
             ->addBody("return self::NAME;");
 
-        // add getReturnType
-        $class->addMethod('getReturnType')
-            ->setStatic()
-            ->setPublic()
-            ->setReturnType('string')
-            ->addBody("return self::RETURN_TYPE;");
-
         if ($operation->isDeprecated) {
             $class->addComment('@deprecated ' . $operation->deprecationReason);
         }
 
         return $class;
-    }
-
-    private function getOperationReturnType(Field $operation, Namespaced $namespace): string
-    {
-        $returnType = $this->schema->findType($operation->type->primary()->name);
-        [$_, $returnTypeName, $_] = $this->nameResolver->classNameWithNamespace($returnType, $namespace);
-
-        return $returnTypeName;
     }
 
     private function getOperationClassname(Field $operation): string
@@ -272,13 +254,15 @@ class OperationGenerator
         Field $operation,
         Namespaced $namespace,
     ): void {
-        $returnTypeName = $this->getOperationReturnType($operation, $namespace);
+        $returnType = $operation->type->unwrap();
+        [$_, $returnTypeName, $docblock] = $this->nameResolver->classNameWithNamespace($returnType, $namespace);
 
         // add do
         $method = $class->addMethod('do')
             ->setPublic()
             ->setReturnType($returnTypeName)
-            ->setReturnNullable();
+            ->setReturnNullable()
+            ->setComment($docblock ? "@return $docblock" : null);
 
         $body = <<<'PHP'
         $response = $this->graphqlClient->request($this);
@@ -295,9 +279,9 @@ class OperationGenerator
             'data',
             $returnTypeName,
             null,
-            $this->schema->findType($operation->type->primary()->name),
+            $returnType,
             '$response->data',
-            1,
+            0,
         ));
 
         $method->setBody($body);
