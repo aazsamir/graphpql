@@ -100,13 +100,22 @@ class TypeGenerator
 
     private function addFastFieldAccessors(Type $type, Namespaced $namespace, ClassType $class, string $outputDir): void
     {
+        // ensure that selectionset and fieldset is generated
+        if ($type->kind->isAny(TypeKind::OBJECT, TypeKind::UNION, TypeKind::INTERFACE)) {
+            $this->selectionSetGenerator->generateSelectionSet(
+                $this->schema->findType($type->name),
+                $namespace,
+                $outputDir,
+            );
+        }
+
         // add fast field accessors
         foreach ($type->fields as $field) {
             [$_, $selfClassname, $_] = $this->nameResolver->classNameWithNamespace($type, $namespace->add('Fields'));
 
             $primaryType = $field->type->primary();
 
-            if ($primaryType->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION, TypeKind::INTERFACE)) {
+            if ($primaryType->kind->isAny(TypeKind::OBJECT, TypeKind::UNION, TypeKind::INTERFACE)) {
                 $childSelection = $this->selectionSetGenerator->generateSelectionSet(
                     $this->schema->findType($primaryType->name),
                     $namespace,
