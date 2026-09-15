@@ -15,6 +15,7 @@ use Nette\PhpGenerator\EnumType;
 class TypeGenerator
 {
     use TypeSkip;
+    use FromArraySerVar;
 
     public function __construct(
         private Schema $schema,
@@ -105,7 +106,7 @@ class TypeGenerator
 
             $primaryType = $field->type->primary();
 
-            if ($primaryType->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION)) {
+            if ($primaryType->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION, TypeKind::INTERFACE)) {
                 $childSelection = $this->selectionSetGenerator->generateSelectionSet(
                     $this->schema->findType($primaryType->name),
                     $namespace,
@@ -201,111 +202,6 @@ class TypeGenerator
         $method->addBody($body);
     }
 
-    private function addFromArraySerVar(
-        Namespaced $namespace,
-        string $fieldName,
-        string $fieldType,
-        ?string $fieldDocblock,
-        Type $type,
-        string $source,
-        int $indent = 0
-    ): string {
-        if ($type->kind->isAny(TypeKind::NON_NULL)) {
-            if ($type->ofType->kind->isAny(TypeKind::LIST)) {
-                $classname = 'array';
-            } else {
-                [$_, $classname, $_] = $this->nameResolver->classNameWithNamespace($type->ofType, $namespace);
-            }
-
-            return $this->addFromArraySerVar(
-                $namespace,
-                $fieldName,
-                $classname,
-                $fieldDocblock,
-                $type->ofType,
-                $source,
-                $indent,
-            );
-        }
-
-        if ($type->kind->isAny(TypeKind::UNION)) {
-            $conditionals = '%s';
-            $primary = $this->schema->findType($type->name);
-
-            $loopIndent = 0;
-
-            foreach ($primary->possibleTypes ?? [] as $possibleType) {
-                $possibleType = $this->schema->findType($possibleType->name);
-                [$_, $possibleTypeClassname, $_] = $this->nameResolver->classNameWithNamespace($possibleType, $namespace);
-                $conditionals = sprintf(
-                    $conditionals,
-                    Pad::multipad(
-                        "(\$data['__typename'] ?? '') === '{$possibleType->name}'\n? (%s)\n: (%s)",
-                        $loopIndent,
-                    ),
-                );
-                $conditionals = sprintf(
-                    $conditionals, $this->addFromArraySerVar(
-                        $namespace,
-                        $fieldName,
-                        $possibleTypeClassname,
-                        null,
-                        $possibleType,
-                        $source,
-                        $indent + 1,
-                    ),
-                    '%s',
-                );
-                $loopIndent += 1;
-            }
-
-            $conditionals = sprintf($conditionals, 'null');
-
-            $body = Pad::multipad($conditionals, 1);
-            $body = sprintf($body, $conditionals);
-            $body = Pad::multipad($body, 1);
-
-            return $body;
-        }
-
-        if ($fieldType === 'array') {
-            $fieldDocblock = \preg_replace('/array</', '', $fieldDocblock ?? '', 1);
-            $fieldDocblock = substr($fieldDocblock, 0, -1);
-
-            $body = <<<PHP
-            array_map(function (\$data) {
-                if (\$data === []) {
-                    return [];
-                }
-
-                return %s;
-            }, {$source} ?? [])
-            PHP;
-
-            $body = Pad::multipad($body, $indent);
-            $body = sprintf($body, $this->addFromArraySerVar(
-                $namespace,
-                $fieldName,
-                $fieldDocblock,
-                null,
-                $type->ofType,
-                '$data',
-                $indent + 1
-            ));
-
-            return $body;
-        } elseif (\strtolower($fieldType) === $fieldType) {
-            // a bit dumb, but, it means it is a primitive
-            return "$source";
-        } elseif ($fieldType === '\DateTimeInterface') {
-            return "new \DateTimeImmutable($source)";
-        } elseif ($type->primary()->kind === TypeKind::ENUM) {
-            return $fieldType . "::from($source)";
-        } else {
-            return $fieldType . "::fromArray($source)";
-        }
-    }
-
     /**
      * @return array{
      *   name: string,
@@ -336,5 +232,15 @@ class TypeGenerator
         usort($fields, fn($a, $b) => $a['nullable'] <=> $b['nullable']);
 
         return $fields;
+    }
+
+    private function getNameResolver(): NameResolver
+    {
+        return $this->nameResolver;
+    }
+
+    private function getSchema(): Schema
+    {
+        return $this->schema;
     }
 }

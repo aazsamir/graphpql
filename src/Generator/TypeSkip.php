@@ -13,11 +13,11 @@ trait TypeSkip
 
     private function shouldSkipType(Type $type): bool
     {
-        if ($type->kind === TypeKind::SCALAR) {
-            return true;
-        }
-
-        if ($type->kind === TypeKind::UNION) {
+        if ($type->kind->isAny(
+            TypeKind::SCALAR,
+            TypeKind::UNION,
+            TypeKind::INTERFACE)
+        ) {
             return true;
         }
 

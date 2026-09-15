@@ -62,7 +62,7 @@ class FieldSetGenerator
         foreach ($type->fields as $field) {
             $docblock = '@return self<mixed>';
 
-            if ($field->type->primary()->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION)) {
+            if ($field->type->primary()->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION, TypeKind::INTERFACE)) {
                 $childSelection = $this->selectionSetGenerator->generateSelectionSet(
                     $this->schema->findType($field->type->primary()->name),
                     $namespace,
@@ -101,7 +101,7 @@ class FieldSetGenerator
             }
         }
 
-        if ($type->primary()->kind->isAny(TypeKind::UNION)) {
+        if ($type->primary()->kind->isAny(TypeKind::UNION, TypeKind::INTERFACE)) {
             foreach ($this->schema->findType($type->primary()->name)->possibleTypes ?? [] as $possibleType) {
                 [$_, $possibleTypeClassname, $_] = $this->nameResolver->classNameWithNamespace($possibleType, $namespace->add('SelectionSet'));
                 $possibleTypeClassname .= 'SelectionSet';

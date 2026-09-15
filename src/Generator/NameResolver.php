@@ -44,6 +44,7 @@ class NameResolver
                     [$_, $children, $docblock] = $this->classNameWithNamespace($type->ofType, $namespace);
                     return [false, $children, $docblock];
                 case TypeKind::UNION:
+                case TypeKind::INTERFACE:
                     $types = [];
                     foreach ($this->schema->findType($name)->possibleTypes ?? [] as $possibleType) {
                         $possibleType = $this->schema->findType($possibleType->name);

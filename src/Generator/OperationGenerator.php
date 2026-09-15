@@ -16,6 +16,7 @@ use Nette\PhpGenerator\Method;
 class OperationGenerator
 {
     use TypeSkip;
+    use FromArraySerVar;
 
     public function __construct(
         private Schema $schema,
@@ -268,11 +269,10 @@ class OperationGenerator
 
     private function addDoMethod(
         ClassType $class,
-        Field $query,
+        Field $operation,
         Namespaced $namespace,
     ): void {
-        $returnTypeName = $this->getOperationReturnType($query, $namespace);
-        $isArray = $query->type->isArray();
+        $returnTypeName = $this->getOperationReturnType($operation, $namespace);
 
         // add do
         $method = $class->addMethod('do')
@@ -287,21 +287,18 @@ class OperationGenerator
             return null;
         }
 
-        $returnType = self::getReturnType();
+        return %s;
         PHP;
-        $body .= "\n\n";
 
-        if ($isArray) {
-            $body .= <<<'PHP'
-            return array_map(fn ($x) => $returnType::fromArray($x), $response->data);
-            PHP;
-            $method->setReturnType('array');
-            $method->addComment("@return array<$returnTypeName>");
-        } elseif ($this->isPrimitive($returnTypeName)) {
-            $body .= 'return $response->data;';
-        } else {
-            $body .= 'return $returnType::fromArray($response->data);';
-        }
+        $body = sprintf($body, $this->addFromArraySerVar(
+            $namespace,
+            'data',
+            $returnTypeName,
+            null,
+            $this->schema->findType($operation->type->primary()->name),
+            '$response->data',
+            1,
+        ));
 
         $method->setBody($body);
     }
@@ -350,5 +347,15 @@ class OperationGenerator
         usort($args, fn($a, $b) => $a['nullable'] <=> $b['nullable']);
 
         return $args;
+    }
+    
+    private function getNameResolver(): NameResolver
+    {
+        return $this->nameResolver;
+    }
+
+    private function getSchema(): Schema
+    {
+        return $this->schema;
     }
 }
