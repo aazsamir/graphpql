@@ -64,7 +64,7 @@ class QueryBuilder
     private function parseVarValue(mixed $value, int $indent): string|int|float
     {
         return match (true) {
-            is_string($value) => '"' . $value . '"',
+            is_string($value) => '"' . $this->escapeString($value) . '"',
             is_numeric($value) => $value,
             $value instanceof \DateTimeInterface => '"' . $value->format('Y-m-d H:i:s') . '"',
             $value instanceof \UnitEnum => $value->name,
@@ -73,6 +73,14 @@ class QueryBuilder
             is_array($value) => $this->parseVarArray($value, $indent + 1),
             default => throw new \Exception('Dont know how to handle ' . \get_debug_type($value)),
         };
+    }
+
+    private function escapeString(string $value): string
+    {
+        $value = \str_replace('%', '%%', $value);
+        $value = \str_replace('"', '\"', $value);
+
+        return $value;
     }
 
     private function parseVarObject(object $object, int $indent): string
