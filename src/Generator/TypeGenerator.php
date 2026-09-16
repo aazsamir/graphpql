@@ -190,7 +190,7 @@ class TypeGenerator
         PHP;
 
         foreach ($this->collectTypeFields($type, $namespace) as $field) {
-            $body .= 'if (isset($data[\'' . $field['name'] . '\'])) {' . "\n";
+            $body .= "if (array_key_exists('{$field['name']}', \$data)) {\n";
             $body .= '    $self->' . $field['name'] . ' = ';
             $body .= $this->addFromArraySerVar(
                 $namespace,
