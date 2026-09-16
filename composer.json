@@ -7,6 +7,9 @@
             "Aazsamir\\Graphpql\\": "src/"
         }
     },
+    "keywords": [
+        "graphql"
+    ],
     "authors": [
         {
             "name": "aazsamir",
