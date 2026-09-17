@@ -43,15 +43,18 @@ class GraphqlClient
      */
     public function requestMultiple(array $operations): array
     {
-        if (array_is_list($operations)) {
-            $indexed = [];
+        $indexed = [];
 
-            foreach ($operations as $i => $operation) {
-                $indexed["a{$i}"] = $operation;
+        // force string indexing
+        foreach ($operations as $index => $operation) {
+            if (\is_numeric($index)) {
+                $index = "a{$index}";
             }
 
-            $operations = $indexed;
+            $indexed[$index] = $operation;
         }
+
+        $operations = $indexed;
 
         $queryString = $this->queryBuilder->fromOperations($operations);
         $response = $this->doQuery($queryString);
@@ -107,7 +110,7 @@ class GraphqlClient
             $body['variables'] = $variables;
         }
 
-        $body = json_encode($body);
+        $body = json_encode($body, flags: \JSON_THROW_ON_ERROR);
 
         return $this->doRequest($body);
     }

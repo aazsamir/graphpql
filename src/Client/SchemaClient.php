@@ -279,7 +279,7 @@ class SchemaClient
             $body['variables'] = $variables;
         }
 
-        $body = json_encode($body);
+        $body = json_encode($body, flags: \JSON_THROW_ON_ERROR);
 
         return $this->doRequest($conn, $body);
     }
