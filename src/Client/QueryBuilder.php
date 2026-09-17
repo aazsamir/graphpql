@@ -14,6 +14,10 @@ use Aazsamir\Graphpql\Model\SelectionSet;
 
 class QueryBuilder
 {
+    public function __construct(
+        private bool $failOnEmptySelection = true,
+    ) {}
+
     public function fromOperation(Operation $operation): string
     {
         $name = match (true) {
@@ -35,7 +39,7 @@ class QueryBuilder
         $string = sprintf($string, $this->parseSelectionSet($operation->getSelectionSet(), $indent));
         $string .= "\n}";
 
-        return $string;        
+        return $string;
     }
 
     private function parseVars(array $vars, int $indent = 0): string|int|float
@@ -100,7 +104,7 @@ class QueryBuilder
 
         $string .= Pad::pad("}", $indent - 1);
 
-        return $string;        
+        return $string;
     }
 
     private function parseVarArray(array $array, int $indent): string
@@ -127,7 +131,7 @@ class QueryBuilder
             return '';
         }
 
-        if ($set->getSelection() === []) {
+        if ($this->failOnEmptySelection && $set->getSelection() === []) {
             throw new GraphqlException(sprintf("%s must contain selection", \get_class($set)));
         }
 
