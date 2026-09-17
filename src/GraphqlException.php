@@ -12,7 +12,7 @@ class GraphqlException extends \Exception
         ?\Throwable $previous = null,
         private ?array $response = null,
     ) {
-        return parent::__construct($message, $code, $previous);
+        parent::__construct($message, $code, $previous);
     }
 
     public function getResponse(): ?array
