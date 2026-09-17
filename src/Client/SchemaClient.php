@@ -20,7 +20,7 @@ class SchemaClient
         private ClientInterface $http,
     ) {}
 
-    public function fetchSchema(ConnArgs $conn): Schema
+    public function fetchRawSchema(ConnArgs $conn): array
     {
         $query = <<<'GRAPHQL'
         query IntrospectionQuery {
@@ -141,7 +141,13 @@ class SchemaClient
             }
         }
         GRAPHQL;
-        $response = $this->doQuery($conn, $query);
+
+        return $this->doQuery($conn, $query);
+    }
+
+    public function fetchSchema(ConnArgs $conn): Schema
+    {
+        $response = $this->fetchRawSchema($conn);
         $types = [];
         $queries = [];
         $mutations = [];

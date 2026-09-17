@@ -10,6 +10,7 @@ use Aazsamir\Graphpql\Generator\NameResolver;
 use Aazsamir\Graphpql\Generator\Namespaced;
 use Aazsamir\Graphpql\Generator\OperationGenerator;
 use Aazsamir\Graphpql\Generator\SelectionSetGenerator;
+use Aazsamir\Graphpql\Generator\SystemFileAccess;
 use Aazsamir\Graphpql\Generator\TypeGenerator;
 use Aazsamir\Graphpql\Generator\TypeSkip;
 use Aazsamir\Graphpql\Model\Mutation;
@@ -26,7 +27,7 @@ class GraphqlGenerator
 
     public static function default(): self
     {
-        return new self(new FileAccess());
+        return new self(new SystemFileAccess());
     }
 
     public function generate(

@@ -3,3 +3,5 @@ src/Generated/
 api.php
 test.php
 .php-cs-fixer.cache
+.phpunit.cache
+tests-coverage
