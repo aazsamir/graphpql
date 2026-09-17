@@ -43,7 +43,7 @@ trait FromArraySerVar
 
             $loopIndent = 0;
 
-            foreach ($primary->possibleTypes ?? [] as $possibleType) {
+            foreach ($primary->possibleTypes as $possibleType) {
                 $possibleType = $this->getSchema()->findType($possibleType->name);
                 [$_, $possibleTypeClassname, $_] = $this->getNameResolver()->classNameWithNamespace($possibleType, $namespace);
                 $conditionals = \sprintf(

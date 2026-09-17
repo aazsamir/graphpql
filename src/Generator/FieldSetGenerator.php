@@ -88,7 +88,7 @@ class FieldSetGenerator
             return;
         }
 
-        foreach ($this->schema->findType($type->primary()->name)->possibleTypes ?? [] as $possibleType) {
+        foreach ($this->schema->findType($type->primary()->name)->possibleTypes as $possibleType) {
             [$_, $possibleTypeClassname, $_] = $this->nameResolver->classNameWithNamespace($possibleType, $namespace->add('SelectionSet'));
             $possibleTypeClassname .= 'SelectionSet';
             $method = $class->addMethod('on' . $possibleType->name)
@@ -164,9 +164,7 @@ class FieldSetGenerator
             $method->addComment('@deprecated ' . $field->deprecationReason);
         }
 
-        if ($docblock) {
-            $method->addComment($docblock);
-        }
+        $method->addComment($docblock);
     }
 
     private function addSelectorMethod(ClassType $class): void

@@ -45,7 +45,7 @@ class NameResolver
                 case TypeKind::UNION:
                 case TypeKind::INTERFACE:
                     $types = [];
-                    foreach ($this->schema->findType($name)->possibleTypes ?? [] as $possibleType) {
+                    foreach ($this->schema->findType($name)->possibleTypes as $possibleType) {
                         $possibleType = $this->schema->findType($possibleType->name);
                         [$_, $possibleTypeName, $_] = $this->classNameWithNamespace($possibleType, $namespace);
                         $types[] = $possibleTypeName;

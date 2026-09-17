@@ -37,7 +37,7 @@ class GraphqlClient
     }
 
     /**
-     * @param array<string, Operation> $operations
+     * @param array<string|int, Operation> $operations
      *
      * @return mixed[]
      */
@@ -80,7 +80,7 @@ class GraphqlClient
 
         $message = 'GraphQL error';
 
-        foreach ($response['errors'] ?? [] as $error) {
+        foreach ($response['errors'] as $error) {
             $message = $error['message'] ?? 'GraphQL error';
             break;
         }

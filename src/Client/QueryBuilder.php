@@ -65,10 +65,11 @@ class QueryBuilder
         return match (true) {
             $operation instanceof Query => 'query',
             $operation instanceof Mutation => 'mutation',
+            default => throw new GraphqlException('Unhandled operation type ' . $operation::class),
         };
     }
 
-    private function parseVars(array $vars, int $indent = 0): string|int|float
+    private function parseVars(array $vars, int $indent = 0): string
     {
         $string = null;
 
@@ -98,8 +99,8 @@ class QueryBuilder
             \is_string($value) => '"' . $this->escapeString($value) . '"',
             is_numeric($value) => $value,
             $value instanceof \DateTimeInterface => '"' . $value->format('Y-m-d H:i:s') . '"',
-            $value instanceof \UnitEnum => $value->name,
             $value instanceof \BackedEnum => $value->value,
+            $value instanceof \UnitEnum => $value->name,
             \is_object($value) => $this->parseVarObject($value, $indent + 1),
             \is_array($value) => $this->parseVarArray($value, $indent + 1),
             default => throw new GraphqlException(\sprintf("Type '%s' is not supported in query", get_debug_type($value))),

@@ -6,7 +6,6 @@ namespace Aazsamir\Graphpql\Generator;
 
 use Aazsamir\Graphpql\Model\NullSelectionSet;
 use Aazsamir\Graphpql\Model\SelectionSet;
-use Aazsamir\Graphpql\Schema\Schema;
 use Aazsamir\Graphpql\Schema\Type;
 use Nette\PhpGenerator\ClassType;
 
@@ -15,7 +14,6 @@ class SelectionSetGenerator
     use TypeSkip;
 
     public function __construct(
-        private Schema $schema,
         private NameResolver $nameResolver,
         private FileAccess $fileAccess,
         private FieldSetGenerator $fieldSetGenerator,

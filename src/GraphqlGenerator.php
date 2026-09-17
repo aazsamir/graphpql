@@ -43,7 +43,6 @@ class GraphqlGenerator
             $this->fileAccess,
         );
         $selectionSetGenerator = new SelectionSetGenerator(
-            $schema,
             $nameResolver,
             $this->fileAccess,
             $fieldSetGenerator,

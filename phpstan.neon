@@ -1,4 +1,8 @@
 parameters:
-    level: 0
+    level: 4
     paths:
         - src
+    ignoreErrors:
+        -
+            identifiers:
+               - trait.unused
