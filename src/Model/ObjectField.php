@@ -6,6 +6,8 @@ namespace Aazsamir\Graphpql\Model;
 
 interface ObjectField
 {
+    public array $fieldVars { get; }
+
     public function getName(): string;
 
     public function getChild(): ?\Aazsamir\Graphpql\Model\SelectionSet;

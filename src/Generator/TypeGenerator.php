@@ -130,6 +130,25 @@ class TypeGenerator
                 ->setStatic()
                 ->setPublic()
                 ->setReturnType($fieldClassname);
+
+            $body = <<<PHP
+            return {$fieldClassname}::{$field->name}(
+            PHP;
+
+            foreach ($field->args ?? [] as $arg) {
+                [$argNullable, $argClassname, $argDocblock] = $this->nameResolver->classNameWithNamespace($arg->type, $namespace);
+                $method->addParameter($arg->name)
+                    ->setType($argClassname)
+                    ->setNullable($argNullable);
+
+                if ($argDocblock) {
+                    $method->addComment('@param ' . $argDocblock . ' $' . $arg->name);
+                }
+
+                $body .= "\${$arg->name},";
+            }
+
+            $body .= ");";
             
             if ($field->isDeprecated) {
                 $method->addComment('@deprecated ' . $field->deprecationReason);
@@ -137,9 +156,6 @@ class TypeGenerator
 
             $method->addComment("@return {$fieldClassname}<{$childSelection}>");
 
-            $body = <<<PHP
-            return {$fieldClassname}::{$field->name}();
-            PHP;
             $method->addBody($body);
         }
     }

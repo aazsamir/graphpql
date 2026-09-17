@@ -153,6 +153,10 @@ class QueryBuilder
 
             $string .= Pad::pad($field->getName(), $indent);
 
+            if ($field->fieldVars !== []) {
+                $string .= $this->parseVars($field->fieldVars, $indent + 1);
+            }
+
             if ($field->getChild()) {
                 $string .= $this->parseSelectionSet($field->getChild(), $indent + 1);
             }

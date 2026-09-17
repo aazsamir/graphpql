@@ -12,6 +12,7 @@ use Aazsamir\Graphpql\Schema\Schema;
 use Aazsamir\Graphpql\Schema\Type;
 use Aazsamir\Graphpql\Schema\TypeKind;
 use Nette\PhpGenerator\ClassType;
+use Nette\PhpGenerator\PropertyAccessMode;
 
 class FieldSetGenerator
 {
@@ -56,6 +57,7 @@ class FieldSetGenerator
         $comment = '@template T';
         $class->addComment($comment);
 
+        $class->addProperty('fieldVars', [])->setType('array')->setPrivate(PropertyAccessMode::Set);
         $class->addProperty('name')->setType('string')->setPrivate();
         $class->addProperty('child')->setType(SelectionSet::class)->setPrivate();
         $class->addProperty('union')->setType('?string')->setPrivate()->setValue(null);
@@ -109,6 +111,10 @@ class FieldSetGenerator
     {
         $docblock = '@return self<mixed>';
 
+        $method = $class->addMethod($field->name)
+            ->setStatic()
+            ->setReturnType('self');
+
         if ($field->type->primary()->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION, TypeKind::INTERFACE)) {
             $childSelection = $this->selectionSetGenerator->generateSelectionSet(
                 $this->schema->findType($field->type->primary()->name),
@@ -125,7 +131,6 @@ class FieldSetGenerator
             \$instance->name = '$field->name';
             \$instance->child = new {$childSelection}();
 
-            return \$instance;
             PHP;
 
             $docblock = "@return self<$childSelection>";
@@ -134,14 +139,26 @@ class FieldSetGenerator
             \$instance = new self();
             \$instance->name = '$field->name';
 
-            return \$instance;
             PHP;
         }
 
-        $method = $class->addMethod($field->name)
-            ->setStatic()
-            ->setReturnType('self')
-            ->addBody($body);
+        foreach ($field->args ?? [] as $arg) {
+            [$argNullable, $argClassname, $argDocblock] = $this->nameResolver->classNameWithNamespace($arg->type, $namespace);
+            $method->addParameter($arg->name)
+                ->setType($argClassname)
+                ->setNullable($argNullable);
+
+            if ($argDocblock) {
+                $method->addComment('@param ' . $argDocblock . ' $' . $arg->name);
+            }
+            
+            $body .= "\$instance->fieldVars['{$arg->name}'] = \${$arg->name};\n";
+        }
+
+        $body .= "\n";
+        $body .= 'return $instance;';
+
+        $method->addBody($body);
 
         if ($field->isDeprecated) {
             $method->addComment('@deprecated ' . $field->deprecationReason);
