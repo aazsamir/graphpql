@@ -64,8 +64,12 @@ class GalleryCreate implements \Aazsamir\Graphpql\Model\Mutation
 
     public function do(): ?\Tests\Feature\Fixture\Stash\Gallery
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(
+        \Aazsamir\Graphpql\Client\Response $response,
+    ): ?\Tests\Feature\Fixture\Stash\Gallery {
         if ($response->data === null) {
             return null;
         }

@@ -67,8 +67,12 @@ class ScrapeURL implements \Aazsamir\Graphpql\Model\Query
 
     public function do(
     ): \Tests\Feature\Fixture\Stash\ScrapedStudio|\Tests\Feature\Fixture\Stash\ScrapedTag|\Tests\Feature\Fixture\Stash\ScrapedScene|\Tests\Feature\Fixture\Stash\ScrapedGallery|\Tests\Feature\Fixture\Stash\ScrapedImage|\Tests\Feature\Fixture\Stash\ScrapedMovie|\Tests\Feature\Fixture\Stash\ScrapedGroup|\Tests\Feature\Fixture\Stash\ScrapedPerformer|null {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(
+        \Aazsamir\Graphpql\Client\Response $response,
+    ): \Tests\Feature\Fixture\Stash\ScrapedStudio|\Tests\Feature\Fixture\Stash\ScrapedTag|\Tests\Feature\Fixture\Stash\ScrapedScene|\Tests\Feature\Fixture\Stash\ScrapedGallery|\Tests\Feature\Fixture\Stash\ScrapedImage|\Tests\Feature\Fixture\Stash\ScrapedMovie|\Tests\Feature\Fixture\Stash\ScrapedGroup|\Tests\Feature\Fixture\Stash\ScrapedPerformer|null {
         if ($response->data === null) {
             return null;
         }

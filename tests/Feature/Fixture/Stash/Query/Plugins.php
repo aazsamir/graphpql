@@ -65,8 +65,14 @@ class Plugins implements \Aazsamir\Graphpql\Model\Query
      */
     public function do(): ?array
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    /**
+     * @return array<\Tests\Feature\Fixture\Stash\Plugin>
+     */
+    public function serializeResponse(\Aazsamir\Graphpql\Client\Response $response): ?array
+    {
         if ($response->data === null) {
             return null;
         }

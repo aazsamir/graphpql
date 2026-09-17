@@ -6,6 +6,7 @@ namespace Aazsamir\Graphpql\Generator;
 
 use Aazsamir\Graphpql\Client\GraphqlClient;
 use Aazsamir\Graphpql\Client\QueryBuilder;
+use Aazsamir\Graphpql\Client\Response;
 use Aazsamir\Graphpql\Schema\Field;
 use Aazsamir\Graphpql\Schema\Schema;
 use Aazsamir\Graphpql\Schema\Type;
@@ -263,16 +264,25 @@ class OperationGenerator
             ->setReturnNullable()
             ->setComment($docblock ? "@return $docblock" : null);
 
-        $body = <<<'PHP'
-        $response = $this->graphqlClient->request($this);
+        $body = 'return $this->serializeResponse($this->graphqlClient->request($this));';
+        $method->setBody($body);
 
+        $method = $class->addMethod('serializeResponse')
+            ->setPublic()
+            ->setReturnType($returnTypeName)
+            ->setReturnNullable()
+            ->setComment($docblock ? "@return $docblock" : null);
+
+        $method->addParameter('response')
+            ->setType(Response::class);
+
+        $body = <<<'PHP'
         if ($response->data === null) {
             return null;
         }
-
+        
         return %s;
         PHP;
-
         $body = \sprintf($body, $this->addFromArraySerVar(
             $namespace,
             'data',

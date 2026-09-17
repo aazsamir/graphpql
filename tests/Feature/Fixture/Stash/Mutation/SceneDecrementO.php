@@ -67,8 +67,11 @@ class SceneDecrementO implements \Aazsamir\Graphpql\Model\Mutation
 
     public function do(): ?int
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(\Aazsamir\Graphpql\Client\Response $response): ?int
+    {
         if ($response->data === null) {
             return null;
         }

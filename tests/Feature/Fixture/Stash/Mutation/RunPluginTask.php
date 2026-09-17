@@ -75,8 +75,11 @@ class RunPluginTask implements \Aazsamir\Graphpql\Model\Mutation
 
     public function do(): ?string
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(\Aazsamir\Graphpql\Client\Response $response): ?string
+    {
         if ($response->data === null) {
             return null;
         }

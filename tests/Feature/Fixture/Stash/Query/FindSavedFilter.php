@@ -64,8 +64,12 @@ class FindSavedFilter implements \Aazsamir\Graphpql\Model\Query
 
     public function do(): ?\Tests\Feature\Fixture\Stash\SavedFilter
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(
+        \Aazsamir\Graphpql\Client\Response $response,
+    ): ?\Tests\Feature\Fixture\Stash\SavedFilter {
         if ($response->data === null) {
             return null;
         }

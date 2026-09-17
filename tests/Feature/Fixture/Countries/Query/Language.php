@@ -64,8 +64,12 @@ class Language implements \Aazsamir\Graphpql\Model\Query
 
     public function do(): ?\Tests\Feature\Fixture\Countries\Language
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(
+        \Aazsamir\Graphpql\Client\Response $response,
+    ): ?\Tests\Feature\Fixture\Countries\Language {
         if ($response->data === null) {
             return null;
         }

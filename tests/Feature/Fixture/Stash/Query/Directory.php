@@ -66,8 +66,12 @@ class Directory implements \Aazsamir\Graphpql\Model\Query
 
     public function do(): ?\Tests\Feature\Fixture\Stash\Directory
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(
+        \Aazsamir\Graphpql\Client\Response $response,
+    ): ?\Tests\Feature\Fixture\Stash\Directory {
         if ($response->data === null) {
             return null;
         }

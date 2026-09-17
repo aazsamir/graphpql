@@ -202,3 +202,28 @@ query {
     }
 }
 ```
+
+## Multiple Queries
+
+You can fire multiple operations as one request.
+```php
+$client = new GraphqlClient(
+    new Client(),
+    new ConnArgs('http://127.0.0.1:9999/graphql'),
+);
+$api = new Api($client);
+$first = new FindImages()->selector(fn ($x) => $x->select(FindImagesResultType::count()));
+$second = new FindImages()->selector(fn ($x) => $x->select(FindImagesResultType::count()));
+$responses = $client->requestMultiple(['first' => $first, 'second' => $second]);
+```
+```graphql
+query {
+    first: findImages {
+        count
+    }
+    second: findImages {
+        count
+    }
+}
+```
+And both responses will be returned within indexed array.

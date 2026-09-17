@@ -64,8 +64,12 @@ class GroupUpdate implements \Aazsamir\Graphpql\Model\Mutation
 
     public function do(): ?\Tests\Feature\Fixture\Stash\Group
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(
+        \Aazsamir\Graphpql\Client\Response $response,
+    ): ?\Tests\Feature\Fixture\Stash\Group {
         if ($response->data === null) {
             return null;
         }

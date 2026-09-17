@@ -64,8 +64,11 @@ class GroupDestroy implements \Aazsamir\Graphpql\Model\Mutation
 
     public function do(): ?bool
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(\Aazsamir\Graphpql\Client\Response $response): ?bool
+    {
         if ($response->data === null) {
             return null;
         }

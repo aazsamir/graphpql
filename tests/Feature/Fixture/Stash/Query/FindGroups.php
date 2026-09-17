@@ -72,8 +72,12 @@ class FindGroups implements \Aazsamir\Graphpql\Model\Query
 
     public function do(): ?\Tests\Feature\Fixture\Stash\FindGroupsResultType
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(
+        \Aazsamir\Graphpql\Client\Response $response,
+    ): ?\Tests\Feature\Fixture\Stash\FindGroupsResultType {
         if ($response->data === null) {
             return null;
         }

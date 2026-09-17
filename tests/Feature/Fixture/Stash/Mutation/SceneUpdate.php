@@ -64,8 +64,12 @@ class SceneUpdate implements \Aazsamir\Graphpql\Model\Mutation
 
     public function do(): ?\Tests\Feature\Fixture\Stash\Scene
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(
+        \Aazsamir\Graphpql\Client\Response $response,
+    ): ?\Tests\Feature\Fixture\Stash\Scene {
         if ($response->data === null) {
             return null;
         }

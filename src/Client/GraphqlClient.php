@@ -18,9 +18,9 @@ class GraphqlClient
         private bool $throwOnErrors = true,
     ) {}
 
-    public function request(Operation $query): Response
+    public function request(Operation $operation): Response
     {
-        $queryString = $this->queryBuilder->fromOperation($query);
+        $queryString = $this->queryBuilder->fromOperation($operation);
         $response = $this->doQuery($queryString);
         $this->handleErrors($response);
 
@@ -34,6 +34,42 @@ class GraphqlClient
             $data,
             $response['errors'] ?? [],
         );
+    }
+
+    /**
+     * @param array<string, Operation> $operations
+     * 
+     * @return mixed[]
+     */
+    public function requestMultiple(array $operations): array
+    {
+        if (\array_is_list($operations)) {
+            $indexed = [];
+
+            foreach ($operations as $i => $operation) {
+                $indexed["a{$i}"] = $operation;
+            }
+
+            $operations = $indexed;
+        }
+
+        $queryString = $this->queryBuilder->fromOperations($operations);
+        $response = $this->doQuery($queryString);
+        $this->handleErrors($response);
+
+        if (!isset($response['data']) || !is_array($response['data'])) {
+            throw new GraphqlException('Multiple operations failed ' . json_encode($response));
+        }
+
+        $results = [];
+
+        foreach ($operations as $index => $operation) {
+            $results[$index] = $operation->serializeResponse(
+                new Response($response['data'][$index], $response['errors'] ?? []),
+            );
+        }
+
+        return $results;
     }
 
     private function handleErrors(array $response): void

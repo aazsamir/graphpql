@@ -62,8 +62,12 @@ class DlnaStatus implements \Aazsamir\Graphpql\Model\Query
 
     public function do(): ?\Tests\Feature\Fixture\Stash\DLNAStatus
     {
-        $response = $this->graphqlClient->request($this);
+        return $this->serializeResponse($this->graphqlClient->request($this));
+    }
 
+    public function serializeResponse(
+        \Aazsamir\Graphpql\Client\Response $response,
+    ): ?\Tests\Feature\Fixture\Stash\DLNAStatus {
         if ($response->data === null) {
             return null;
         }
