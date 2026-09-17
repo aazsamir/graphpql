@@ -69,6 +69,9 @@ class QueryBuilder
         };
     }
 
+    /**
+     * @param array<mixed> $vars
+     */
     private function parseVars(array $vars, int $indent = 0): string
     {
         $string = null;
@@ -133,6 +136,9 @@ class QueryBuilder
         return $string;
     }
 
+    /**
+     * @param array<mixed> $array
+     */
     private function parseVarArray(array $array, int $indent): string
     {
         $string = '[';

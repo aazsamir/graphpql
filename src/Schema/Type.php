@@ -11,6 +11,7 @@ readonly class Type
      * @param InputField[] $inputFields
      * @param EnumValue[] $enumValues
      * @param Type[] $possibleTypes
+     * @param mixed[] $interfaces
      */
     public function __construct(
         public ?string $name,
@@ -24,6 +25,9 @@ readonly class Type
         public ?self $ofType = null,
     ) {}
 
+    /**
+     * @param array<mixed> $data
+     */
     public static function fromArray(array $data): self
     {
         return new self(

@@ -10,6 +10,9 @@ interface Operation
 {
     public static function getName(): string;
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getVars(): array;
 
     public function getSelectionSet(): SelectionSet;

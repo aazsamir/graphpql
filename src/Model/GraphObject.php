@@ -6,5 +6,8 @@ namespace Aazsamir\Graphpql\Model;
 
 interface GraphObject
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array;
 }

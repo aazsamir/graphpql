@@ -21,6 +21,9 @@ class NameResolver
         return preg_replace('/[^a-zA-Z0-9]/', 'x', $name);
     }
 
+    /** 
+     * @return array{bool, string, ?string}
+     */
     public function className(Type $type, Namespaced $namespace, bool $skipContainers = false): array
     {
         $name = $type->name;
@@ -87,6 +90,9 @@ class NameResolver
         return [true, $name, null];
     }
 
+    /** 
+     * @return array{bool, string, ?string}
+     */
     public function classNameWithNamespace(Type $type, Namespaced $namespace): array
     {
         [$nullable, $classname, $docblock] = $this->className($type, $namespace);

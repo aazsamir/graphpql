@@ -20,6 +20,9 @@ class SchemaClient
         private ClientInterface $http,
     ) {}
 
+    /**
+     * @return array<mixed>
+     */
     public function fetchRawSchema(ConnArgs $conn): array
     {
         $query = <<<'GRAPHQL'
@@ -174,6 +177,9 @@ class SchemaClient
         return new Schema($types, $queries, $mutations);
     }
 
+    /**
+     * @param array<mixed> $type
+     */
     private function parseType(array $type): Type
     {
         [$fields, $inputFields, $enumValues] = $this->parseProperties($type);
@@ -190,6 +196,11 @@ class SchemaClient
         );
     }
 
+    /**
+     * @param array<mixed> $data
+     * 
+     * @return array<mixed>
+     */
     private function parseProperties(array $data): array
     {
         $fields = [];
@@ -227,6 +238,9 @@ class SchemaClient
         return [$fields, $inputFields, $enumValues];
     }
 
+    /**
+     * @param array<mixed> $data
+     */
     private function parseField(array $data): Field
     {
         $args = [];
@@ -250,6 +264,11 @@ class SchemaClient
         );
     }
 
+    /**
+     * @param array<mixed> $variables
+     * 
+     * @return array<mixed>
+     */
     private function doQuery(ConnArgs $conn, string $query, array $variables = []): array
     {
         $body = [
@@ -257,7 +276,6 @@ class SchemaClient
         ];
 
         if (!empty($variables)) {
-            $variables = json_encode($variables);
             $body['variables'] = $variables;
         }
 
@@ -266,9 +284,11 @@ class SchemaClient
         return $this->doRequest($conn, $body);
     }
 
-    private function doRequest(ConnArgs $conn, array|string $body): array
+    /**
+     * @return array<mixed>
+     */
+    private function doRequest(ConnArgs $conn, string $body): array
     {
-        $body = \is_array($body) ? json_encode($body) : $body;
         $request = new Request(
             'POST',
             $conn->endpoint,

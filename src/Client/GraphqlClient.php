@@ -72,6 +72,9 @@ class GraphqlClient
         return $results;
     }
 
+    /**
+     * @param array<mixed> $response
+     */
     private function handleErrors(array $response): void
     {
         if (!$this->throwOnErrors || empty($response['errors'])) {
@@ -88,6 +91,11 @@ class GraphqlClient
         throw new GraphqlException(message: $message, response: $response);
     }
 
+    /**
+     * @param array<mixed> $variables
+     * 
+     * @return array<mixed>
+     */
     private function doQuery(string $query, array $variables = []): array
     {
         $body = [
@@ -104,6 +112,9 @@ class GraphqlClient
         return $this->doRequest($body);
     }
 
+    /**
+     * @return array<mixed>
+     */
     private function doRequest(string $body): array
     {
         $request = new Request(
@@ -118,6 +129,6 @@ class GraphqlClient
 
         $response = $this->http->sendRequest($request);
 
-        return json_decode($response->getBody()->getContents(), true);
+        return json_decode($response->getBody()->getContents(), true, flags: \JSON_THROW_ON_ERROR);
     }
 }

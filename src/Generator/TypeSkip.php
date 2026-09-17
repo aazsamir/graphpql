@@ -9,6 +9,7 @@ use Aazsamir\Graphpql\Schema\TypeKind;
 
 trait TypeSkip
 {
+    /** @var string[]  */
     private array $skip = [];
 
     private function shouldSkipType(Type $type): bool

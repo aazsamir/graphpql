@@ -6,6 +6,9 @@ namespace Aazsamir\Graphpql;
 
 class GraphqlException extends \Exception
 {
+    /**
+     * @param ?array<mixed> $response
+     */
     public function __construct(
         string $message = '',
         int $code = 0,
@@ -15,6 +18,9 @@ class GraphqlException extends \Exception
         parent::__construct($message, $code, $previous);
     }
 
+    /**
+     * @return ?array<mixed>
+     */
     public function getResponse(): ?array
     {
         return $this->response;
