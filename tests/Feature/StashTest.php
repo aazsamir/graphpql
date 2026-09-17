@@ -99,6 +99,30 @@ class StashTest extends TestCase
         );
     }
 
+    public function testMultiQueryGeneration(): void
+    {
+        $first = new FindImages()->selector(fn ($x) => $x->select(FindImagesResultType::count()));
+        $second = new FindImages()->selector(fn ($x) => $x->select(FindImagesResultType::count()));
+        $queryBuilder = new QueryBuilder();
+
+        $result = $queryBuilder->fromOperations(['first' => $first, 'second' => $second]);
+        $expected = <<<'GRAPHQL'
+        query {
+            first: findImages {
+                count
+            }
+            second: findImages {
+                count
+            }
+        }
+        GRAPHQL;
+
+        $this->assertSame(
+            $this->normalizeLineEndings($expected),
+            $this->normalizeLineEndings($result),
+        );
+    }
+
     private function normalizeLineEndings(string $string): string
     {
         return \str_replace("\r\n", "\n", $string);

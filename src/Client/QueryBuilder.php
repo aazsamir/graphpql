@@ -20,26 +20,52 @@ class QueryBuilder
 
     public function fromOperation(Operation $operation): string
     {
-        $name = match (true) {
-            $operation instanceof Query => 'query',
-            $operation instanceof Mutation => 'mutation',
-        };
+        $name = $this->getOperationName($operation);
         $string = <<<GRAPHQL
         $name {
             {$operation::getName()}%s
         GRAPHQL;
         $string = str_replace("\r\n", "\n", $string);
 
-        $indent = 2;
-
         if ($operation->getVars()) {
-            $string = \sprintf($string, $this->parseVars($operation->getVars(), $indent)) . '%s';
+            $string = \sprintf($string, $this->parseVars($operation->getVars(), 2)) . '%s';
         }
 
-        $string = \sprintf($string, $this->parseSelectionSet($operation->getSelectionSet(), $indent));
+        $string = \sprintf($string, $this->parseSelectionSet($operation->getSelectionSet(), 2));
         $string .= "\n}";
 
         return $string;
+    }
+
+    /**
+     * @param array<string, Operation> $operations
+     */
+    public function fromOperations(array $operations): string
+    {
+        $name = $this->getOperationName(\array_first($operations));
+        $string = "{$name} {";
+
+        foreach ($operations as $alias => $operation) {
+            $string .= "\n    {$alias}: {$operation::getName()}%s";
+
+            if ($operation->getVars()) {
+                $string = \sprintf($string, $this->parseVars($operation->getVars(), 2)) . '%s';
+            }
+
+            $string = \sprintf($string, $this->parseSelectionSet($operation->getSelectionSet(), 2));
+        }
+
+        $string .= "\n}";
+
+        return $string;
+    }
+
+    private function getOperationName(Operation $operation): string
+    {
+        return match (true) {
+            $operation instanceof Query => 'query',
+            $operation instanceof Mutation => 'mutation',
+        };
     }
 
     private function parseVars(array $vars, int $indent = 0): string|int|float
