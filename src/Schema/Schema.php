@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Aazsamir\Graphpql\Schema;
 
+use Aazsamir\Graphpql\GraphqlException;
+
 readonly class Schema
 {
     /**
@@ -25,6 +27,6 @@ readonly class Schema
             }
         }
 
-        throw new \Exception("Type {$name} not found");
+        throw new GraphqlException("Type {$name} not found");
     }
 }

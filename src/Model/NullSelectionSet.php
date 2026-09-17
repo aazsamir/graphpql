@@ -6,9 +6,9 @@ namespace Aazsamir\Graphpql\Model;
 
 class NullSelectionSet implements SelectionSet
 {
-    public static function new(): never
+    public static function new(): self
     {
-        throw new \Exception('This field does not have a selection set');
+        return new self();
     }
 
     public function getSelection(): array

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Aazsamir\Graphpql\Client;
 
+use Aazsamir\Graphpql\GraphqlException;
 use Aazsamir\Graphpql\Schema\EnumValue;
 use Aazsamir\Graphpql\Schema\Field;
 use Aazsamir\Graphpql\Schema\InputField;
 use Aazsamir\Graphpql\Schema\Schema;
 use Aazsamir\Graphpql\Schema\Type;
 use Aazsamir\Graphpql\Schema\TypeKind;
+use GuzzleHttp\Exception\BadResponseException;
+use GuzzleHttp\Exception\ResponseException;
 use GuzzleHttp\Psr7\Request;
 use Psr\Http\Client\ClientInterface;
 
@@ -146,7 +149,7 @@ class SchemaClient
         $mutations = [];
 
         if (empty($response['data'])) {
-            throw new \Exception('Introspection failed. ' . json_encode($response['errors'] ?? []));
+            throw new GraphqlException('Introspection failed. ' . json_encode($response['errors'] ?? []));
         }
 
         foreach ($response['data']['__schema']['types'] as $type) {
@@ -271,7 +274,15 @@ class SchemaClient
             trim($body),
         );
 
-        $response = $this->http->sendRequest($request);
+        try {
+            $response = $this->http->sendRequest($request);
+
+            if ($response->getStatusCode() !== 200) {
+                throw new GraphqlException('Query failed');
+            }
+        } catch (\Throwable $e) {
+            throw new GraphqlException($e->getMessage(), previous: $e);
+        }
 
         return json_decode($response->getBody()->getContents(), true);
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Aazsamir\Graphpql\Client;
 
+use Aazsamir\Graphpql\GraphqlException;
 use Aazsamir\Graphpql\Model\Operation;
 use GuzzleHttp\Psr7\Request;
 use Psr\Http\Client\ClientInterface;
@@ -13,19 +14,42 @@ class GraphqlClient
     public function __construct(
         private ClientInterface $http,
         private ConnArgs $connArgs,
-        private QueryBuilder $queryBuilder,
+        private QueryBuilder $queryBuilder = new QueryBuilder(),
+        private bool $throwOnErrors = true,
     ) {}
 
     public function request(Operation $query): Response
     {
         $queryString = $this->queryBuilder->fromOperation($query);
         $response = $this->doQuery($queryString);
-        $data = \array_first($response['data']);
+        $this->handleErrors($response);
+
+        $data = null;
+
+        if (isset($response['data']) && is_array($response['data'])) {
+            $data = \array_first($response['data']);
+        }
 
         return new Response(
             $data,
             $response['errors'] ?? [],
         );
+    }
+
+    private function handleErrors(array $response): void
+    {
+        if (!$this->throwOnErrors || empty($response['errors'])) {
+            return;
+        }
+
+        $message = 'GraphQL error';
+
+        foreach ($response['errors'] ?? [] as $error) {
+            $message = $error['message'] ?? 'GraphQL error';
+            break;
+        }
+
+        throw new GraphqlException(message: $message, response: $response);
     }
 
     private function doQuery(string $query, array $variables = []): array

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Aazsamir\Graphpql\Client;
 
 use Aazsamir\Graphpql\Generator\Pad;
+use Aazsamir\Graphpql\GraphqlException;
 use Aazsamir\Graphpql\Model\Mutation;
 use Aazsamir\Graphpql\Model\NullSelectionSet;
 use Aazsamir\Graphpql\Model\Operation;
@@ -71,7 +72,7 @@ class QueryBuilder
             $value instanceof \BackedEnum => $value->value,
             is_object($value) => $this->parseVarObject($value, $indent + 1),
             is_array($value) => $this->parseVarArray($value, $indent + 1),
-            default => throw new \Exception('Dont know how to handle ' . \get_debug_type($value)),
+            default => throw new GraphqlException(sprintf("Type '%s' is not supported in query", \get_debug_type($value))),
         };
     }
 
@@ -124,6 +125,10 @@ class QueryBuilder
     {
         if ($set instanceof NullSelectionSet) {
             return '';
+        }
+
+        if ($set->getSelection() === []) {
+            throw new GraphqlException(sprintf("%s must contain selection", \get_class($set)));
         }
 
         $string = " {\n";

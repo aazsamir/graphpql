@@ -4,20 +4,22 @@ declare(strict_types=1);
 
 namespace Aazsamir\Graphpql\Model;
 
+use Aazsamir\Graphpql\GraphqlException;
+
 class NullField implements ObjectField
 {
     public function getName(): string
     {
-        throw new \Exception('Invalid field');
+        throw new GraphqlException('Invalid field');
     }
 
     public function getChild(): ?SelectionSet
     {
-        throw new \Exception('Invalid field');
+        throw new GraphqlException('Invalid field');
     }
 
     public function getUnion(): ?string
     {
-        throw new \Exception('Invalid field');
+        throw new GraphqlException('Invalid field');
     }
 }

@@ -223,7 +223,7 @@ class OperationGenerator
         $class->addMethod('getSelectionSet')
             ->setPublic()
             ->setReturnType($selectionType)
-            ->addBody(sprintf('return isset($this->selection) ? $this->selection : new \%s;', NullSelectionSet::class));
+            ->addBody(sprintf('return isset($this->selection) ? $this->selection : %s::new();', $selectionType));
     }
 
     private function addGraphqlClient(ClassType $class): void
