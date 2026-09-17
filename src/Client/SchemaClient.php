@@ -198,7 +198,7 @@ class SchemaClient
 
     /**
      * @param array<mixed> $data
-     * 
+     *
      * @return array<mixed>
      */
     private function parseProperties(array $data): array
@@ -266,7 +266,7 @@ class SchemaClient
 
     /**
      * @param array<mixed> $variables
-     * 
+     *
      * @return array<mixed>
      */
     private function doQuery(ConnArgs $conn, string $query, array $variables = []): array

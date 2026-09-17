@@ -47,7 +47,7 @@ class GraphqlClient
 
         // force string indexing
         foreach ($operations as $index => $operation) {
-            if (\is_numeric($index)) {
+            if (is_numeric($index)) {
                 $index = "a{$index}";
             }
 
@@ -96,7 +96,7 @@ class GraphqlClient
 
     /**
      * @param array<mixed> $variables
-     * 
+     *
      * @return array<mixed>
      */
     private function doQuery(string $query, array $variables = []): array

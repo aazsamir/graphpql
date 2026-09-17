@@ -21,7 +21,7 @@ class NameResolver
         return (string) preg_replace('/[^a-zA-Z0-9]/', 'x', $name);
     }
 
-    /** 
+    /**
      * @return array{bool, string, ?string}
      */
     public function className(Type $type, Namespaced $namespace, bool $skipContainers = false): array
@@ -31,7 +31,7 @@ class NameResolver
         if ($skipContainers === false) {
             switch ($type->kind) {
                 case TypeKind::LIST:
-                    assert($type->ofType !== null);
+                    \assert($type->ofType !== null);
 
                     [$_, $classname, $docblock] = $this->classNameWithNamespace($type->ofType, $namespace);
 
@@ -44,7 +44,7 @@ class NameResolver
                     // TODO: we assume that every array may be nullable
                     return [true, 'array', $docblock];
                 case TypeKind::NON_NULL:
-                    assert($type->ofType !== null);
+                    \assert($type->ofType !== null);
 
                     [$_, $children, $docblock] = $this->classNameWithNamespace($type->ofType, $namespace);
 
@@ -94,7 +94,7 @@ class NameResolver
         return [true, $name, null];
     }
 
-    /** 
+    /**
      * @return array{bool, string, ?string}
      */
     public function classNameWithNamespace(Type $type, Namespaced $namespace): array

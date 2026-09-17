@@ -20,7 +20,7 @@ trait FromArraySerVar
         int $indent = 0,
     ): string {
         if ($type->kind->isAny(TypeKind::NON_NULL)) {
-            assert($type->ofType !== null);
+            \assert($type->ofType !== null);
 
             if ($type->ofType->kind->isAny(TypeKind::LIST)) {
                 $classname = 'array';

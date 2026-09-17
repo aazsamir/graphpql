@@ -176,7 +176,7 @@ class QueryBuilder
 
         foreach ($set->getSelection() as $field) {
             if ($field->getUnion()) {
-                assert($field->getChild() !== null);
+                \assert($field->getChild() !== null);
 
                 $string .= Pad::pad("... on {$field->getUnion()} ", $indent);
                 $string .= $this->parseSelectionSet($field->getChild(), $indent + 1, Pad::pad('__typename', $indent + 1));

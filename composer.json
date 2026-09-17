@@ -33,8 +33,10 @@
     },
     "scripts": {
         "qa": [
-            "@phpcsfixer"
+            "@phpcsfixer",
+            "@phpstan"
         ],
-        "phpcsfixer": "php-cs-fixer fix --diff --verbose --allow-risky=yes"
+        "phpcsfixer": "php-cs-fixer fix --diff --verbose --allow-risky=yes",
+        "phpstan": "phpstan"
     }
 }

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Aazsamir\Graphpql\Generator;
 
-use Nette\PhpGenerator\ClassLike;
 use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\EnumType;
 use Nette\PhpGenerator\PhpFile;
