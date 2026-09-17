@@ -54,7 +54,6 @@ use GuzzleHttp\Client;
 $client = new GraphqlClient(
     new Client(),
     new ConnArgs('http://localhost:9999/graphql'),
-    new QueryBuilder(),
 );
 
 $api = new Api($client);
