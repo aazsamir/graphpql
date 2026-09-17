@@ -47,7 +47,7 @@ class FileAccess
         $filename = $outputDir . '/' . $name . '.php';
 
         if (!\is_dir(dirname($filename))) {
-            mkdir(dirname($filename));
+            mkdir(dirname($filename), recursive: true);
         }
 
         \file_put_contents($filename, $printer->printFile($file));
