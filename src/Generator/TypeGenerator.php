@@ -129,8 +129,13 @@ class TypeGenerator
             $method = $class->addMethod($field->name)
                 ->setStatic()
                 ->setPublic()
-                ->setReturnType($fieldClassname)
-                ->setComment("@return {$fieldClassname}<{$childSelection}>");
+                ->setReturnType($fieldClassname);
+            
+            if ($field->isDeprecated) {
+                $method->addComment('@deprecated ' . $field->deprecationReason);
+            }
+
+            $method->addComment("@return {$fieldClassname}<{$childSelection}>");
 
             $body = <<<PHP
             return {$fieldClassname}::{$field->name}();

@@ -143,6 +143,10 @@ class FieldSetGenerator
             ->setReturnType('self')
             ->addBody($body);
 
+        if ($field->isDeprecated) {
+            $method->addComment('@deprecated ' . $field->deprecationReason);
+        }
+
         if ($docblock) {
             $method->addComment($docblock);
         }
