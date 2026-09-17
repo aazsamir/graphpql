@@ -26,13 +26,13 @@ class GraphqlGenerator
 
     public static function default(): self
     {
-        return new self(new FileAccess);
+        return new self(new FileAccess());
     }
 
     public function generate(
         Schema $schema,
         string $namespace,
-        string $outputDir
+        string $outputDir,
     ): void {
         $namespace = new Namespaced($namespace);
         $nameResolver = new NameResolver($schema);

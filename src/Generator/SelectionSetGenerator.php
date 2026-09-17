@@ -36,7 +36,7 @@ class SelectionSetGenerator
         $classname .= 'SelectionSet';
         $fullname = $namespace->add('SelectionSet')->add($classname)->toString();
 
-        if (\in_array($fullname, $this->skip)) {
+        if (\in_array($fullname, $this->skip, true)) {
             return $fullname;
         }
 
@@ -77,10 +77,10 @@ class SelectionSetGenerator
             ->addParameter('selection')
             ->setType($fieldSetType);
 
-        $body = <<<PHP
-        \$this->selection = \$selection;
+        $body = <<<'PHP'
+        $this->selection = $selection;
 
-        return \$this;
+        return $this;
         PHP;
         $method->addBody($body);
 

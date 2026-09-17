@@ -11,8 +11,6 @@ use Aazsamir\Graphpql\Schema\InputField;
 use Aazsamir\Graphpql\Schema\Schema;
 use Aazsamir\Graphpql\Schema\Type;
 use Aazsamir\Graphpql\Schema\TypeKind;
-use GuzzleHttp\Exception\BadResponseException;
-use GuzzleHttp\Exception\ResponseException;
 use GuzzleHttp\Psr7\Request;
 use Psr\Http\Client\ClientInterface;
 
@@ -24,7 +22,7 @@ class SchemaClient
 
     public function fetchSchema(ConnArgs $conn): Schema
     {
-        $query = <<<GRAPHQL
+        $query = <<<'GRAPHQL'
         query IntrospectionQuery {
             __schema {
                 queryType {
@@ -257,14 +255,14 @@ class SchemaClient
             $body['variables'] = $variables;
         }
 
-        $body = \json_encode($body);
+        $body = json_encode($body);
 
         return $this->doRequest($conn, $body);
     }
 
     private function doRequest(ConnArgs $conn, array|string $body): array
     {
-        $body = is_array($body) ? json_encode($body) : $body;
+        $body = \is_array($body) ? json_encode($body) : $body;
         $request = new Request(
             'POST',
             $conn->endpoint,

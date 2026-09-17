@@ -18,9 +18,7 @@ class NameResolver
 
     public function safeName(string $name): string
     {
-        $name = preg_replace('/[^a-zA-Z0-9]/', 'x', $name);
-
-        return $name;
+        return preg_replace('/[^a-zA-Z0-9]/', 'x', $name);
     }
 
     public function className(Type $type, Namespaced $namespace, bool $skipContainers = false): array
@@ -42,6 +40,7 @@ class NameResolver
                     return [true, 'array', $docblock];
                 case TypeKind::NON_NULL:
                     [$_, $children, $docblock] = $this->classNameWithNamespace($type->ofType, $namespace);
+
                     return [false, $children, $docblock];
                 case TypeKind::UNION:
                 case TypeKind::INTERFACE:
@@ -62,7 +61,7 @@ class NameResolver
 
         $name = $this->safeName($name);
 
-        switch (\strtolower($name)) {
+        switch (strtolower($name)) {
             case 'timestamp':
             case 'time':
                 return [true, '\\' . \DateTimeInterface::class, null];
@@ -76,7 +75,7 @@ class NameResolver
             case 'int':
             case 'float':
             case 'bool':
-                return [true, \strtolower($name), null];
+                return [true, strtolower($name), null];
         }
 
         if ($type->kind === TypeKind::SCALAR) {

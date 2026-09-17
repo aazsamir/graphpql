@@ -21,7 +21,7 @@ readonly class Type
         public array $interfaces = [],
         public array $enumValues = [],
         public array $possibleTypes = [],
-        public ?Type $ofType = null,
+        public ?self $ofType = null,
     ) {}
 
     public static function fromArray(array $data): self

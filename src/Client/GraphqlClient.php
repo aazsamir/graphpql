@@ -26,8 +26,8 @@ class GraphqlClient
 
         $data = null;
 
-        if (isset($response['data']) && is_array($response['data'])) {
-            $data = \array_first($response['data']);
+        if (isset($response['data']) && \is_array($response['data'])) {
+            $data = array_first($response['data']);
         }
 
         return new Response(
@@ -63,7 +63,7 @@ class GraphqlClient
             $body['variables'] = $variables;
         }
 
-        $body = \json_encode($body);
+        $body = json_encode($body);
 
         return $this->doRequest($body);
     }

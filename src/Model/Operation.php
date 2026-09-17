@@ -7,6 +7,8 @@ namespace Aazsamir\Graphpql\Model;
 interface Operation
 {
     public static function getName(): string;
+
     public function getVars(): array;
+
     public function getSelectionSet(): SelectionSet;
 }

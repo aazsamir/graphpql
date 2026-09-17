@@ -28,15 +28,15 @@ class QueryBuilder
         $name {
             {$operation::getName()}%s
         GRAPHQL;
-        $string = \str_replace("\r\n", "\n", $string);
+        $string = str_replace("\r\n", "\n", $string);
 
         $indent = 2;
 
         if ($operation->getVars()) {
-            $string = sprintf($string, $this->parseVars($operation->getVars(), $indent)) . '%s';
+            $string = \sprintf($string, $this->parseVars($operation->getVars(), $indent)) . '%s';
         }
 
-        $string = sprintf($string, $this->parseSelectionSet($operation->getSelectionSet(), $indent));
+        $string = \sprintf($string, $this->parseSelectionSet($operation->getSelectionSet(), $indent));
         $string .= "\n}";
 
         return $string;
@@ -60,7 +60,7 @@ class QueryBuilder
         }
 
         if ($string !== null) {
-            $string .= Pad::pad(")", $indent - 1);
+            $string .= Pad::pad(')', $indent - 1);
         }
 
         return (string) $string;
@@ -69,28 +69,27 @@ class QueryBuilder
     private function parseVarValue(mixed $value, int $indent): string|int|float
     {
         return match (true) {
-            is_string($value) => '"' . $this->escapeString($value) . '"',
+            \is_string($value) => '"' . $this->escapeString($value) . '"',
             is_numeric($value) => $value,
             $value instanceof \DateTimeInterface => '"' . $value->format('Y-m-d H:i:s') . '"',
             $value instanceof \UnitEnum => $value->name,
             $value instanceof \BackedEnum => $value->value,
-            is_object($value) => $this->parseVarObject($value, $indent + 1),
-            is_array($value) => $this->parseVarArray($value, $indent + 1),
-            default => throw new GraphqlException(sprintf("Type '%s' is not supported in query", \get_debug_type($value))),
+            \is_object($value) => $this->parseVarObject($value, $indent + 1),
+            \is_array($value) => $this->parseVarArray($value, $indent + 1),
+            default => throw new GraphqlException(\sprintf("Type '%s' is not supported in query", get_debug_type($value))),
         };
     }
 
     private function escapeString(string $value): string
     {
-        $value = \str_replace('%', '%%', $value);
-        $value = \str_replace('"', '\"', $value);
+        $value = str_replace('%', '%%', $value);
 
-        return $value;
+        return str_replace('"', '\"', $value);
     }
 
     private function parseVarObject(object $object, int $indent): string
     {
-        $vars = \get_object_vars($object);
+        $vars = get_object_vars($object);
         $string = "{\n";
 
         foreach ($vars as $name => $value) {
@@ -102,14 +101,14 @@ class QueryBuilder
             $string .= Pad::pad("$name: $strValue", $indent) . "\n";
         }
 
-        $string .= Pad::pad("}", $indent - 1);
+        $string .= Pad::pad('}', $indent - 1);
 
         return $string;
     }
 
     private function parseVarArray(array $array, int $indent): string
     {
-        $string = "[";
+        $string = '[';
         foreach ($array as $value) {
             if ($value === null) {
                 continue;
@@ -132,7 +131,7 @@ class QueryBuilder
         }
 
         if ($this->failOnEmptySelection && $set->getSelection() === []) {
-            throw new GraphqlException(sprintf("%s must contain selection", \get_class($set)));
+            throw new GraphqlException(\sprintf('%s must contain selection', $set::class));
         }
 
         $string = " {\n";
@@ -164,7 +163,7 @@ class QueryBuilder
             $string .= "\n";
         }
 
-        $string .= Pad::pad("}", $indent - 1);
+        $string .= Pad::pad('}', $indent - 1);
 
         return $string;
     }

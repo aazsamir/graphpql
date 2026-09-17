@@ -8,6 +8,8 @@ use Aazsamir\Graphpql\GraphqlException;
 
 class NullField implements ObjectField
 {
+    public private(set) array $fieldVars = [];
+
     public function getName(): string
     {
         throw new GraphqlException('Invalid field');

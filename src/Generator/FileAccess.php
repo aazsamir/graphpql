@@ -22,11 +22,11 @@ class FileAccess
             $objects = scandir($dir);
 
             foreach ($objects as $object) {
-                if ($object != "." && $object != "..") {
-                    if (is_dir($dir . DIRECTORY_SEPARATOR . $object) && !is_link($dir . "/" . $object)) {
-                        $this->rrmdir($dir . DIRECTORY_SEPARATOR . $object);
+                if ($object !== '.' && $object !== '..') {
+                    if (is_dir($dir . \DIRECTORY_SEPARATOR . $object) && !is_link($dir . '/' . $object)) {
+                        $this->rrmdir($dir . \DIRECTORY_SEPARATOR . $object);
                     } else {
-                        unlink($dir . DIRECTORY_SEPARATOR . $object);
+                        unlink($dir . \DIRECTORY_SEPARATOR . $object);
                     }
                 }
             }
@@ -37,7 +37,7 @@ class FileAccess
 
     public function saveFile(string $name, Namespaced $namespace, string $outputDir, ClassLike $item): void
     {
-        $namespaceItem = new PhpNamespace(ltrim($namespace->toString(), "\\"));
+        $namespaceItem = new PhpNamespace(ltrim($namespace->toString(), '\\'));
 
         $file = new PhpFile();
         $file->addNamespace($namespaceItem)->add($item);
@@ -46,10 +46,10 @@ class FileAccess
         $printer->setTypeResolving(true);
         $filename = $outputDir . '/' . $name . '.php';
 
-        if (!\is_dir(dirname($filename))) {
-            mkdir(dirname($filename), recursive: true);
+        if (!is_dir(\dirname($filename))) {
+            mkdir(\dirname($filename), recursive: true);
         }
 
-        \file_put_contents($filename, $printer->printFile($file));
+        file_put_contents($filename, $printer->printFile($file));
     }
 }

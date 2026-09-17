@@ -11,12 +11,12 @@ readonly class Namespaced
     public function __construct(
         string $namespace,
     ) {
-        $this->namespace = rtrim($namespace, "\\");
+        $this->namespace = rtrim($namespace, '\\');
     }
 
     public function add(string $part): self
     {
-        return new self($this->namespace . "\\" . $part);
+        return new self($this->namespace . '\\' . $part);
     }
 
     public function toString(): string

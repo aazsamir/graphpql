@@ -17,10 +17,17 @@
         }
     ],
     "require-dev": {
-        "symfony/var-dumper": "^8.1"
+        "symfony/var-dumper": "^8.1",
+        "friendsofphp/php-cs-fixer": "^3.95"
     },
     "require": {
         "guzzlehttp/guzzle": "^8.1",
         "nette/php-generator": "^4.2"
+    },
+    "scripts": {
+        "qa": [
+            "@phpcsfixer"
+        ],
+        "phpcsfixer": "php-cs-fixer fix --diff --verbose --allow-risky=yes"
     }
 }

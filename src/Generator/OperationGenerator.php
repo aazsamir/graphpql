@@ -6,7 +6,6 @@ namespace Aazsamir\Graphpql\Generator;
 
 use Aazsamir\Graphpql\Client\GraphqlClient;
 use Aazsamir\Graphpql\Client\QueryBuilder;
-use Aazsamir\Graphpql\Model\NullSelectionSet;
 use Aazsamir\Graphpql\Schema\Field;
 use Aazsamir\Graphpql\Schema\Schema;
 use Aazsamir\Graphpql\Schema\Type;
@@ -15,8 +14,8 @@ use Nette\PhpGenerator\Method;
 
 class OperationGenerator
 {
-    use TypeSkip;
     use FromArraySerVar;
+    use TypeSkip;
 
     public function __construct(
         private Schema $schema,
@@ -45,7 +44,7 @@ class OperationGenerator
         $this->addDoMethod($class, $operation, $namespace);
         $this->addOperationDdMethod($class);
 
-        $this->fileAccess->saveFile($name, $namespace->add($namespaceSuffix), $outputDir . "/" . $namespaceSuffix, $class);
+        $this->fileAccess->saveFile($name, $namespace->add($namespaceSuffix), $outputDir . '/' . $namespaceSuffix, $class);
     }
 
     public function generateApi(Namespaced $namespace, string $outputDir): void
@@ -99,20 +98,20 @@ class OperationGenerator
     private function createOperationClass(
         Field $operation,
         Namespaced $namespace,
-        string $interface
+        string $interface,
     ): ClassType {
         $name = $this->getOperationClassname($operation);
 
         $class = new ClassType($name);
         $class->addImplement($interface);
-        $class->addConstant("NAME", $operation->name);
+        $class->addConstant('NAME', $operation->name);
 
         // add getName
         $class->addMethod('getName')
             ->setStatic()
             ->setPublic()
             ->setReturnType('string')
-            ->addBody("return self::NAME;");
+            ->addBody('return self::NAME;');
 
         if ($operation->isDeprecated) {
             $class->addComment('@deprecated ' . $operation->deprecationReason);
@@ -212,10 +211,10 @@ class OperationGenerator
             ->addParameter('selection')
             ->setType($selectionType);
 
-        $body = <<<PHP
-        \$this->selection = \$selection;
+        $body = <<<'PHP'
+        $this->selection = $selection;
 
-        return \$this;
+        return $this;
         PHP;
         $method->addBody($body);
 
@@ -223,7 +222,7 @@ class OperationGenerator
         $class->addMethod('getSelectionSet')
             ->setPublic()
             ->setReturnType($selectionType)
-            ->addBody(sprintf('return isset($this->selection) ? $this->selection : %s::new();', $selectionType));
+            ->addBody(\sprintf('return isset($this->selection) ? $this->selection : %s::new();', $selectionType));
     }
 
     private function addGraphqlClient(ClassType $class): void
@@ -274,7 +273,7 @@ class OperationGenerator
         return %s;
         PHP;
 
-        $body = sprintf($body, $this->addFromArraySerVar(
+        $body = \sprintf($body, $this->addFromArraySerVar(
             $namespace,
             'data',
             $returnTypeName,
@@ -294,7 +293,7 @@ class OperationGenerator
             ->setReturnType('never');
 
         $body = <<<PHP
-        \$content = new \%s()->fromOperation(\$this);
+        \$content = new \\%s()->fromOperation(\$this);
 
         if (function_exists('dd')) {
             dd(\$content);
@@ -306,7 +305,7 @@ class OperationGenerator
         exit(1);
         PHP;
 
-        $body = sprintf($body, QueryBuilder::class);
+        $body = \sprintf($body, QueryBuilder::class);
 
         $method->addBody($body);
     }
@@ -328,11 +327,11 @@ class OperationGenerator
             ];
         }
 
-        usort($args, fn($a, $b) => $a['nullable'] <=> $b['nullable']);
+        usort($args, fn ($a, $b) => $a['nullable'] <=> $b['nullable']);
 
         return $args;
     }
-    
+
     private function getNameResolver(): NameResolver
     {
         return $this->nameResolver;

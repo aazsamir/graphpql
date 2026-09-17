@@ -18,11 +18,11 @@ class Pad
             $line = self::pad($line, $indent);
         }
 
-        return \implode("\n", $lines);
+        return implode("\n", $lines);
     }
 
     public static function pad(string $string, int $indent): string
     {
-        return \str_repeat(' ', $indent * 4) . $string;
+        return str_repeat(' ', $indent * 4) . $string;
     }
 }

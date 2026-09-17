@@ -46,7 +46,7 @@ class FieldSetGenerator
         $classname .= 'Field';
         $fullname = $namespace->add('Fields')->add($classname)->toString();
 
-        if (in_array($fullname, $this->skip)) {
+        if (\in_array($fullname, $this->skip, true)) {
             return $fullname;
         }
 
@@ -67,7 +67,7 @@ class FieldSetGenerator
         }
 
         $this->addUnionHandles($class, $type, $namespace);
-        $this->addSelectorMethod($class);        
+        $this->addSelectorMethod($class);
         $this->addGetNameMethod($class);
         $this->addGetChildMethod($class);
         $this->addGetUnionMethod($class);
@@ -151,7 +151,7 @@ class FieldSetGenerator
             if ($argDocblock) {
                 $method->addComment('@param ' . $argDocblock . ' $' . $arg->name);
             }
-            
+
             $body .= "\$instance->fieldVars['{$arg->name}'] = \${$arg->name};\n";
         }
 
@@ -178,10 +178,10 @@ class FieldSetGenerator
             ->setReturnType('self');
         $method->addParameter('selection')->setType('callable');
         $method->addComment('@param callable(T): void $selection');
-        $body = <<<PHP
-        \$selection(\$this->child);
+        $body = <<<'PHP'
+        $selection($this->child);
 
-        return \$this;
+        return $this;
         PHP;
         $method->addBody($body);
     }

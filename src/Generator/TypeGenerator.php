@@ -14,8 +14,8 @@ use Nette\PhpGenerator\EnumType;
 
 class TypeGenerator
 {
-    use TypeSkip;
     use FromArraySerVar;
+    use TypeSkip;
 
     public function __construct(
         private Schema $schema,
@@ -148,8 +148,8 @@ class TypeGenerator
                 $body .= "\${$arg->name},";
             }
 
-            $body .= ");";
-            
+            $body .= ');';
+
             if ($field->isDeprecated) {
                 $method->addComment('@deprecated ' . $field->deprecationReason);
             }
@@ -259,7 +259,7 @@ class TypeGenerator
             ];
         }
 
-        usort($fields, fn($a, $b) => $a['nullable'] <=> $b['nullable']);
+        usort($fields, fn ($a, $b) => $a['nullable'] <=> $b['nullable']);
 
         return $fields;
     }

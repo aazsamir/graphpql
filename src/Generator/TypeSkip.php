@@ -27,8 +27,8 @@ trait TypeSkip
 
     private function isPrimitive(string $name): bool
     {
-        return in_array(
-            \strtolower($name),
+        return \in_array(
+            strtolower($name),
             [
                 'string',
                 'int',
@@ -37,14 +37,14 @@ trait TypeSkip
                 'bool',
                 'boolean',
                 'id',
-            ],
+            ], true,
         );
     }
 
     private function isNativeGraphType(string $name): bool
     {
-        return in_array(
-            \strtolower($name),
+        return \in_array(
+            strtolower($name),
             [
                 '__directive',
                 '__directivelocation',
@@ -59,7 +59,7 @@ trait TypeSkip
                 'subscription',
                 'time',
                 'timestamp',
-            ],
+            ], true,
         );
     }
 }

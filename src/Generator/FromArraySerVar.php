@@ -17,7 +17,7 @@ trait FromArraySerVar
         ?string $fieldDocblock,
         Type $type,
         string $source,
-        int $indent = 0
+        int $indent = 0,
     ): string {
         if ($type->kind->isAny(TypeKind::NON_NULL)) {
             if ($type->ofType->kind->isAny(TypeKind::LIST)) {
@@ -46,14 +46,14 @@ trait FromArraySerVar
             foreach ($primary->possibleTypes ?? [] as $possibleType) {
                 $possibleType = $this->getSchema()->findType($possibleType->name);
                 [$_, $possibleTypeClassname, $_] = $this->getNameResolver()->classNameWithNamespace($possibleType, $namespace);
-                $conditionals = sprintf(
+                $conditionals = \sprintf(
                     $conditionals,
                     Pad::multipad(
                         "({$source}['__typename'] ?? '') === '{$possibleType->name}'\n? (%s)\n: (%s)",
                         $loopIndent,
                     ),
                 );
-                $conditionals = sprintf(
+                $conditionals = \sprintf(
                     $conditionals, $this->addFromArraySerVar(
                         $namespace,
                         $fieldName,
@@ -65,20 +65,19 @@ trait FromArraySerVar
                     ),
                     '%s',
                 );
-                $loopIndent += 1;
+                ++$loopIndent;
             }
 
-            $conditionals = sprintf($conditionals, 'null');
+            $conditionals = \sprintf($conditionals, 'null');
 
             $body = Pad::multipad($conditionals, 1);
-            $body = sprintf($body, $conditionals);
-            $body = Pad::multipad($body, 1);
+            $body = \sprintf($body, $conditionals);
 
-            return $body;
+            return Pad::multipad($body, 1);
         }
 
         if ($fieldType === 'array') {
-            $fieldDocblock = \preg_replace('/array</', '', $fieldDocblock ?? '', 1);
+            $fieldDocblock = preg_replace('/array</', '', $fieldDocblock ?? '', 1);
             $fieldDocblock = substr($fieldDocblock, 0, -1);
 
             $body = <<<PHP
@@ -92,7 +91,8 @@ trait FromArraySerVar
             PHP;
 
             $body = Pad::multipad($body, $indent);
-            $body = sprintf($body, $this->addFromArraySerVar(
+
+            return \sprintf($body, $this->addFromArraySerVar(
                 $namespace,
                 $fieldName,
                 $fieldDocblock,
@@ -101,20 +101,22 @@ trait FromArraySerVar
                 '$data',
                 $indent + 1
             ));
-
-            return $body;
-        } elseif (\strtolower($fieldType) === $fieldType) {
+        }
+        if (strtolower($fieldType) === $fieldType) {
             // a bit dumb, but, it means it is a primitive
             return "$source";
-        } elseif ($fieldType === '\DateTimeInterface') {
-            return "new \DateTimeImmutable($source)";
-        } elseif ($type->primary()->kind === TypeKind::ENUM) {
-            return $fieldType . "::from($source)";
-        } else {
-            return $fieldType . "::fromArray($source)";
         }
+        if ($fieldType === '\DateTimeInterface') {
+            return "new \\DateTimeImmutable($source)";
+        }
+        if ($type->primary()->kind === TypeKind::ENUM) {
+            return $fieldType . "::from($source)";
+        }
+
+        return $fieldType . "::fromArray($source)";
     }
 
     abstract private function getNameResolver(): NameResolver;
+
     abstract private function getSchema(): Schema;
 }
