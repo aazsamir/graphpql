@@ -7,6 +7,7 @@ namespace Aazsamir\Graphpql\Generator;
 use Aazsamir\Graphpql\Model\NullField;
 use Aazsamir\Graphpql\Model\ObjectField;
 use Aazsamir\Graphpql\Model\SelectionSet;
+use Aazsamir\Graphpql\Schema\Field;
 use Aazsamir\Graphpql\Schema\Schema;
 use Aazsamir\Graphpql\Schema\Type;
 use Aazsamir\Graphpql\Schema\TypeKind;
@@ -60,67 +61,95 @@ class FieldSetGenerator
         $class->addProperty('union')->setType('?string')->setPrivate()->setValue(null);
 
         foreach ($type->fields as $field) {
-            $docblock = '@return self<mixed>';
+            $this->addFieldMethod($class, $field, $namespace, $outputDir);
+        }
 
-            if ($field->type->primary()->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION, TypeKind::INTERFACE)) {
-                $childSelection = $this->selectionSetGenerator->generateSelectionSet(
-                    $this->schema->findType($field->type->primary()->name),
-                    $namespace,
-                    $outputDir,
-                );
+        $this->addUnionHandles($class, $type, $namespace);
+        $this->addSelectorMethod($class);        
+        $this->addGetNameMethod($class);
+        $this->addGetChildMethod($class);
+        $this->addGetUnionMethod($class);
 
-                if ($childSelection === 'mixed') {
-                    throw new \Exception('Unreachable');
-                }
+        $this->fileAccess->saveFile(
+            $classname,
+            $namespace->add('Fields'),
+            $outputDir . '/Fields',
+            $class,
+        );
 
-                $body = <<<PHP
-                \$instance = new self();
-                \$instance->name = '$field->name';
-                \$instance->child = new {$childSelection}();
+        return $fullname;
+    }
 
-                return \$instance;
-                PHP;
+    private function addUnionHandles(ClassType $class, Type $type, Namespaced $namespace): void
+    {
+        if ($type->primary()->kind->isAny(TypeKind::UNION, TypeKind::INTERFACE) === false) {
+            return;
+        }
 
-                $docblock = "@return self<$childSelection>";
-            } else {
-                $body = <<<PHP
-                \$instance = new self();
-                \$instance->name = '$field->name';
-
-                return \$instance;
-                PHP;
-            }
-
-            $method = $class->addMethod($field->name)
-                ->setStatic()
+        foreach ($this->schema->findType($type->primary()->name)->possibleTypes ?? [] as $possibleType) {
+            [$_, $possibleTypeClassname, $_] = $this->nameResolver->classNameWithNamespace($possibleType, $namespace->add('SelectionSet'));
+            $possibleTypeClassname .= 'SelectionSet';
+            $method = $class->addMethod('on' . $possibleType->name)
                 ->setReturnType('self')
-                ->addBody($body);
+                ->setStatic();
 
-            if ($docblock) {
-                $method->addComment($docblock);
+            $body = <<<PHP
+            \$instance = new self();
+            \$instance->child = new {$possibleTypeClassname}();
+            \$instance->union = '{$possibleType->name}';
+
+            return \$instance;
+            PHP;
+            $method->setBody($body);
+            $method->addComment("@return self<$possibleTypeClassname>");
+        }
+    }
+
+    private function addFieldMethod(ClassType $class, Field $field, Namespaced $namespace, string $outputDir): void
+    {
+        $docblock = '@return self<mixed>';
+
+        if ($field->type->primary()->kind->isAny(TypeKind::INPUT_OBJECT, TypeKind::OBJECT, TypeKind::UNION, TypeKind::INTERFACE)) {
+            $childSelection = $this->selectionSetGenerator->generateSelectionSet(
+                $this->schema->findType($field->type->primary()->name),
+                $namespace,
+                $outputDir,
+            );
+
+            if ($childSelection === 'mixed') {
+                throw new \Exception('Unreachable');
             }
+
+            $body = <<<PHP
+            \$instance = new self();
+            \$instance->name = '$field->name';
+            \$instance->child = new {$childSelection}();
+
+            return \$instance;
+            PHP;
+
+            $docblock = "@return self<$childSelection>";
+        } else {
+            $body = <<<PHP
+            \$instance = new self();
+            \$instance->name = '$field->name';
+
+            return \$instance;
+            PHP;
         }
 
-        if ($type->primary()->kind->isAny(TypeKind::UNION, TypeKind::INTERFACE)) {
-            foreach ($this->schema->findType($type->primary()->name)->possibleTypes ?? [] as $possibleType) {
-                [$_, $possibleTypeClassname, $_] = $this->nameResolver->classNameWithNamespace($possibleType, $namespace->add('SelectionSet'));
-                $possibleTypeClassname .= 'SelectionSet';
-                $method = $class->addMethod('on' . $possibleType->name)
-                    ->setReturnType('self')
-                    ->setStatic();
+        $method = $class->addMethod($field->name)
+            ->setStatic()
+            ->setReturnType('self')
+            ->addBody($body);
 
-                $body = <<<PHP
-                \$instance = new self();
-                \$instance->child = new {$possibleTypeClassname}();
-                \$instance->union = '{$possibleType->name}';
-
-                return \$instance;
-                PHP;
-                $method->setBody($body);
-                $method->addComment("@return self<$possibleTypeClassname>");
-            }
+        if ($docblock) {
+            $method->addComment($docblock);
         }
+    }
 
+    private function addSelectorMethod(ClassType $class): void
+    {
         // add selector()
         $method = $class->addMethod('selector');
         $method
@@ -134,13 +163,19 @@ class FieldSetGenerator
         return \$this;
         PHP;
         $method->addBody($body);
+    }
 
+    private function addGetNameMethod(ClassType $class): void
+    {
         // add getName
-        $method = $class->addMethod('getName')
+        $class->addMethod('getName')
             ->setPublic()
             ->setReturnType('string')
             ->addBody('return $this->name;');
+    }
 
+    private function addGetChildMethod(ClassType $class): void
+    {
         $body = <<<'PHP'
         if (isset($this->child)) {
             return $this->child;
@@ -150,24 +185,18 @@ class FieldSetGenerator
         PHP;
 
         // add getChild
-        $method = $class->addMethod('getChild')
+        $class->addMethod('getChild')
             ->setPublic()
             ->setReturnType('?' . SelectionSet::class)
             ->addBody($body);
+    }
 
+    private function addGetUnionMethod(ClassType $class): void
+    {
         // add getUnion
         $class->addMethod('getUnion')
             ->setPublic()
             ->setReturnType('?string')
             ->setBody('return $this->union;');
-
-        $this->fileAccess->saveFile(
-            $classname,
-            $namespace->add('Fields'),
-            $outputDir . '/Fields',
-            $class,
-        );
-
-        return $fullname;
     }
 }
