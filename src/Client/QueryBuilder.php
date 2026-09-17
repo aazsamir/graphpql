@@ -42,7 +42,7 @@ class QueryBuilder
      */
     public function fromOperations(array $operations): string
     {
-        $name = $this->getOperationName(\array_first($operations));
+        $name = $this->getOperationName(array_first($operations));
         $string = "{$name} {";
 
         foreach ($operations as $alias => $operation) {

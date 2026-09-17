@@ -38,12 +38,12 @@ class GraphqlClient
 
     /**
      * @param array<string, Operation> $operations
-     * 
+     *
      * @return mixed[]
      */
     public function requestMultiple(array $operations): array
     {
-        if (\array_is_list($operations)) {
+        if (array_is_list($operations)) {
             $indexed = [];
 
             foreach ($operations as $i => $operation) {
@@ -57,7 +57,7 @@ class GraphqlClient
         $response = $this->doQuery($queryString);
         $this->handleErrors($response);
 
-        if (!isset($response['data']) || !is_array($response['data'])) {
+        if (!isset($response['data']) || !\is_array($response['data'])) {
             throw new GraphqlException('Multiple operations failed ' . json_encode($response));
         }
 
