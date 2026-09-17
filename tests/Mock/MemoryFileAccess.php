@@ -6,7 +6,8 @@ namespace Tests\Mock;
 
 use Aazsamir\Graphpql\Generator\FileAccess;
 use Aazsamir\Graphpql\Generator\Namespaced;
-use Nette\PhpGenerator\ClassLike;
+use Nette\PhpGenerator\ClassType;
+use Nette\PhpGenerator\EnumType;
 use Nette\PhpGenerator\PhpFile;
 use Nette\PhpGenerator\PhpNamespace;
 use Nette\PhpGenerator\PsrPrinter;
@@ -20,7 +21,7 @@ class MemoryFileAccess implements FileAccess
         // no-op
     }
 
-    public function saveFile(string $name, Namespaced $namespace, string $outputDir, ClassLike $item): void
+    public function saveFile(string $name, Namespaced $namespace, string $outputDir, ClassType|EnumType $item): void
     {
         $namespaceItem = new PhpNamespace(ltrim($namespace->toString(), '\\'));
 

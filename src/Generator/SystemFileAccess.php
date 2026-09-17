@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Aazsamir\Graphpql\Generator;
 
 use Nette\PhpGenerator\ClassLike;
+use Nette\PhpGenerator\ClassType;
+use Nette\PhpGenerator\EnumType;
 use Nette\PhpGenerator\PhpFile;
 use Nette\PhpGenerator\PhpNamespace;
 use Nette\PhpGenerator\PsrPrinter;
@@ -35,7 +37,7 @@ class SystemFileAccess implements FileAccess
         }
     }
 
-    public function saveFile(string $name, Namespaced $namespace, string $outputDir, ClassLike $item): void
+    public function saveFile(string $name, Namespaced $namespace, string $outputDir, ClassType|EnumType $item): void
     {
         $namespaceItem = new PhpNamespace(ltrim($namespace->toString(), '\\'));
 
