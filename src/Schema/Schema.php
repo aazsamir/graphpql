@@ -19,7 +19,7 @@ readonly class Schema
         public array $mutations,
     ) {}
 
-    public function findType(string $name): Type
+    public function findType(?string $name): Type
     {
         foreach ($this->types as $type) {
             if ($type->name === $name) {

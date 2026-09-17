@@ -50,6 +50,7 @@ readonly class Type
 
     public function unwrap(): self
     {
+        // @phpstan-ignore return.type
         return $this->kind === TypeKind::NON_NULL ? $this->ofType : $this;
     }
 
@@ -57,7 +58,7 @@ readonly class Type
     {
         return $this->kind === TypeKind::LIST
             || (
-                $this->kind === TypeKind::NON_NULL && $this->ofType->kind === TypeKind::LIST
+                $this->kind === TypeKind::NON_NULL && $this->ofType->kind === TypeKind::LIST // @phpstan-ignore property.nonObject
             );
     }
 }

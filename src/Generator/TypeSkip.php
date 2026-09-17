@@ -22,6 +22,10 @@ trait TypeSkip
             return true;
         }
 
+        if ($type->name === null) {
+            return true;
+        }
+
         return $this->isPrimitive($type->name)
             || $this->isNativeGraphType($type->name);
     }

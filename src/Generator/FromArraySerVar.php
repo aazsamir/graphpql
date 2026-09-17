@@ -20,6 +20,8 @@ trait FromArraySerVar
         int $indent = 0,
     ): string {
         if ($type->kind->isAny(TypeKind::NON_NULL)) {
+            assert($type->ofType !== null);
+
             if ($type->ofType->kind->isAny(TypeKind::LIST)) {
                 $classname = 'array';
             } else {
@@ -77,7 +79,7 @@ trait FromArraySerVar
         }
 
         if ($fieldType === 'array') {
-            $fieldDocblock = preg_replace('/array</', '', $fieldDocblock ?? '', 1);
+            $fieldDocblock = (string) preg_replace('/array</', '', $fieldDocblock ?? '', 1);
             $fieldDocblock = substr($fieldDocblock, 0, -1);
 
             $body = <<<PHP
@@ -97,7 +99,7 @@ trait FromArraySerVar
                 $fieldName,
                 $fieldDocblock,
                 null,
-                $type->ofType,
+                $type->ofType, // @phpstan-ignore argument.type
                 '$data',
                 $indent + 1
             ));

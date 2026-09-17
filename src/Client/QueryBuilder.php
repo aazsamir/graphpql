@@ -42,7 +42,7 @@ class QueryBuilder
      */
     public function fromOperations(array $operations): string
     {
-        $name = $this->getOperationName(array_first($operations));
+        $name = $this->getOperationName(array_first($operations)); // @phpstan-ignore argument.type
         $string = "{$name} {";
 
         foreach ($operations as $alias => $operation) {
@@ -176,6 +176,8 @@ class QueryBuilder
 
         foreach ($set->getSelection() as $field) {
             if ($field->getUnion()) {
+                assert($field->getChild() !== null);
+
                 $string .= Pad::pad("... on {$field->getUnion()} ", $indent);
                 $string .= $this->parseSelectionSet($field->getChild(), $indent + 1, Pad::pad('__typename', $indent + 1));
                 $string .= "\n";

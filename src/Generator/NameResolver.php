@@ -18,7 +18,7 @@ class NameResolver
 
     public function safeName(string $name): string
     {
-        return preg_replace('/[^a-zA-Z0-9]/', 'x', $name);
+        return (string) preg_replace('/[^a-zA-Z0-9]/', 'x', $name);
     }
 
     /** 
@@ -31,7 +31,9 @@ class NameResolver
         if ($skipContainers === false) {
             switch ($type->kind) {
                 case TypeKind::LIST:
-                    [$nullable, $classname, $docblock] = $this->classNameWithNamespace($type->ofType, $namespace);
+                    assert($type->ofType !== null);
+
+                    [$_, $classname, $docblock] = $this->classNameWithNamespace($type->ofType, $namespace);
 
                     if ($docblock) {
                         $docblock = 'array<' . $docblock . '>';
@@ -42,6 +44,8 @@ class NameResolver
                     // TODO: we assume that every array may be nullable
                     return [true, 'array', $docblock];
                 case TypeKind::NON_NULL:
+                    assert($type->ofType !== null);
+
                     [$_, $children, $docblock] = $this->classNameWithNamespace($type->ofType, $namespace);
 
                     return [false, $children, $docblock];
